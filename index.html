@@ -163,7 +163,7 @@
       sleep_goal: 7.5, caffeine_limit: 400, creatine_goal: 5, goal_weight: 68
     };
     const tabs = [
-      ["today", "Today"], ["food", "Food AI"], ["log", "Log"], ["import", "Import"], ["ledger", "Ledger"],
+      ["today", "Today"], ["food", "ChatGPT"], ["log", "Log"], ["import", "Import"], ["ledger", "Ledger"],
       ["trends", "Trends"], ["share", "Share"], ["settings", "Goals"]
     ];
     let active = "today";
@@ -251,6 +251,22 @@
       return `<p class="eyebrow">${eyebrow}</p><h2>${title}</h2><p class="section-copy">${copy}</p>`;
     }
     function stat(label, value) { return `<div class="stat"><label>${label}</label><b>${value ?? "-"}</b></div>`; }
+    function chatGptPrompt() {
+      return `You are my daily health, nutrition, and habit tracking assistant.
+
+Throughout the day, help me track meals, drinks, supplements, workouts, steps, sleep, mood, energy, reading, meditation/prayer, and notes.
+
+For food photos and food descriptions, follow this evidence order:
+1. If a nutrition label or package text is visible, read that first.
+2. If there is no usable label, use exact brand/product nutrition facts when I provide a brand or product name.
+3. Only if neither is available, estimate from similar foods and mark confidence lower.
+
+Do not turn missing values into zero. Use null when unknown. Nutrition.tracked should be true only if we have enough food information for the day. If nutrition was not tracked, set nutrition.tracked to false and calories/macros to null.
+
+When I say "export my tracker JSON", return ONLY one JSON object in this exact structure for today's date (${todayKey()}):
+
+${sampleJson()}`;
+    }
 
     function renderToday() {
       const e = current();
@@ -312,33 +328,42 @@
         data_quality: { nutrition_tracked: true, sleep_tracked: false, steps_tracked: false, weight_tracked: false, habits_tracked: "partial", overall_confidence: "medium" }, notes: "" }, null, 2);
     }
     function renderImport() {
-      return `${section("ChatGPT import", "Paste JSON", "Existing dates are protected unless replace_existing is true.")}
+      return `${section("ChatGPT import", "Paste daily JSON", "Use this after ChatGPT exports your day.")}
       <textarea id="json" class="jsonbox" spellcheck="false" style="margin-top:1rem">${sampleJson()}</textarea>
+      <label class="field" style="margin-top:.75rem"><span>Import mode</span><label style="display:flex;align-items:center;gap:.6rem;color:var(--muted);font-weight:750"><input id="replaceExisting" type="checkbox" style="width:1.2rem;height:1.2rem" checked> Replace this date if it already exists</label></label>
       <button class="btn dark" style="margin-top:.9rem;width:100%" onclick="doImport()">Validate and import</button><div id="importStatus"></div>
       <article class="card" style="margin-top:1rem"><strong>Import history</strong><div class="ledger" style="margin-top:.7rem">${history.slice(0,5).map(h => `<div class="stat row"><b>${h.date}</b><small>${h.replaced_existing ? "replaced" : "imported"}</small></div>`).join("") || "<p class='section-copy'>No imports yet.</p>"}</div></article>`;
     }
     function renderFood() {
-      return `${section("AI food log", "Natural language and photos", "Type what you ate, attach a label or food photo, then review before saving.")}
+      return `${section("ChatGPT tracker", "Capture in ChatGPT, save here", "Use ChatGPT during the day, then paste one clean JSON export into this app.")}
       <article class="card" style="margin-top:1rem">
-        <label class="field" style="box-shadow:none;padding:0"><span>Food description</span><textarea id="foodText" placeholder="Example: 1 cup Greek yogurt, banana, 2 eggs, or paste nutrition-label text here"></textarea></label>
-        <label class="field" style="margin-top:.75rem;box-shadow:none"><span>Photo or nutrition label</span><input id="foodPhoto" type="file" accept="image/*" capture="environment" onchange="previewFoodPhoto(event)"><img id="foodPreview" class="photo-preview" alt="Selected food photo preview"></label>
+        <strong>Daily flow</strong>
         <ul class="source-list">
-          <li>First: read nutrition labels and package text from the photo.</li>
-          <li>Second: if no label is visible, look up the exact brand and food online.</li>
-          <li>Last: estimate only when label and brand evidence are unavailable.</li>
+          <li>Start a ChatGPT chat with the prompt below.</li>
+          <li>Send meals, labels, photos, habits, and notes to that chat during the day.</li>
+          <li>At night, ask ChatGPT: export my tracker JSON.</li>
+          <li>Paste the JSON into the Import tab.</li>
         </ul>
-        <button class="btn dark" style="margin-top:.9rem;width:100%" onclick="analyzeFood()">Analyze food</button>
-        <div id="foodStatus"></div>
-      </article>
-      <article class="card" id="foodReview" style="display:none;margin-top:1rem">
-        <div class="row"><strong>Review nutrition</strong><small id="foodEvidence">Not analyzed</small></div>
-        <div class="grid two" style="margin-top:.8rem">
-          ${field("Calories","food_calories",null)}${field("Protein g","food_protein",null)}${field("Carbs g","food_carbs",null)}${field("Fat g","food_fat",null)}
-          ${field("Fiber g","food_fiber",null)}${field("Caffeine mg","food_caffeine",null)}${field("Creatine g","food_creatine",null,"0.1")}
+        <div class="grid two" style="margin-top:.9rem">
+          <button class="btn dark" onclick="copyPrompt()">Copy ChatGPT prompt</button>
+          <button class="btn" onclick="window.open('https://chatgpt.com/', '_blank')">Open ChatGPT</button>
         </div>
-        <label class="field" style="margin-top:.75rem"><span>Food note</span><textarea id="foodNote"></textarea></label>
-        <button class="btn" style="margin-top:.9rem;width:100%" onclick="addFoodToToday()">Add to today</button>
+        <button class="btn ghost" style="margin-top:.75rem;width:100%" onclick="active='import';render()">Paste exported JSON</button>
+        <div id="promptStatus"></div>
+      </article>
+      <article class="card" style="margin-top:1rem">
+        <div class="row"><strong>Prompt preview</strong><small>${todayKey()}</small></div>
+        <textarea class="jsonbox" readonly style="margin-top:.75rem;min-height:22rem">${chatGptPrompt()}</textarea>
       </article>`;
+    }
+    async function copyPrompt() {
+      const status = document.getElementById("promptStatus");
+      try {
+        await navigator.clipboard.writeText(chatGptPrompt());
+        status.innerHTML = `<div class="status success" style="margin-top:.8rem">Prompt copied. Paste it into ChatGPT, then track there throughout the day.</div>`;
+      } catch {
+        status.innerHTML = `<div class="status warn" style="margin-top:.8rem">Copy failed. You can select and copy the prompt preview manually.</div>`;
+      }
     }
     function previewFoodPhoto(event) {
       const file = event.target.files && event.target.files[0];
@@ -433,7 +458,9 @@
     function doImport() {
       const raw = document.getElementById("json").value, box = document.getElementById("importStatus");
       try {
-        const parsed = JSON.parse(raw), payload = normalize(parsed), exists = entries.some(e => e.date === payload.entry.date);
+        const parsed = JSON.parse(raw);
+        if (document.getElementById("replaceExisting")?.checked) parsed.replace_existing = true;
+        const payload = normalize(parsed), exists = entries.some(e => e.date === payload.entry.date);
         if (exists && !payload.replace) throw new Error(`A record already exists for ${payload.entry.date}. Set replace_existing to true to replace it.`);
         entries = [payload.entry, ...entries.filter(e => e.date !== payload.entry.date)].sort((a,b) => b.date.localeCompare(a.date));
         history = [{ id: crypto.randomUUID(), imported_at: new Date().toISOString(), date: payload.entry.date, raw_json: raw, replaced_existing: exists && payload.replace }, ...history];
