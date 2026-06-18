@@ -1,0 +1,476 @@
+<!doctype html>
+<!-- Copyright (c) 2026 Nik Neufeld. All rights reserved. -->
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" content="#3e7f5d" />
+  <meta name="description" content="A personal local-first health, nutrition, and habit tracker." />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+  <meta name="apple-mobile-web-app-title" content="Reset" />
+  <link rel="manifest" href="./manifest.webmanifest" />
+  <link rel="apple-touch-icon" href="./icons/icon-180.png" />
+  <link rel="icon" href="./icons/icon-192.png" />
+  <title>Reset Health Tracker</title>
+  <style>
+    :root {
+      --ink: #17201d;
+      --muted: #657068;
+      --mist: #f5f7f3;
+      --leaf: #3e7f5d;
+      --coral: #df6f52;
+      --gold: #d8a340;
+      --line: #e1e7df;
+      --white: rgba(255,255,255,.92);
+      --shadow: 0 18px 60px rgba(36,45,66,.10);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at top left, rgba(62,127,93,.14), transparent 34rem), linear-gradient(180deg, #f5f7f3, #eef2ed);
+      color: var(--ink);
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+    button, input, textarea { font: inherit; }
+    button { cursor: pointer; }
+    .app { max-width: 980px; margin: 0 auto; padding-bottom: 6.5rem; }
+    header {
+      position: sticky; top: 0; z-index: 3;
+      display: flex; justify-content: space-between; align-items: center; gap: 1rem;
+      padding: .8rem 1rem; background: rgba(245,247,243,.88); backdrop-filter: blur(18px);
+      border-bottom: 1px solid rgba(255,255,255,.85);
+    }
+    .eyebrow { margin: 0; color: var(--leaf); font-size: .72rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+    h1, h2, h3, p { margin-top: 0; }
+    h1 { margin-bottom: 0; font-size: 1.35rem; line-height: 1.1; }
+    h2 { margin-bottom: .2rem; font-size: 1.65rem; }
+    .date-pill { border-radius: 999px; background: white; padding: .45rem .8rem; text-align: right; box-shadow: 0 3px 12px rgba(0,0,0,.05); }
+    .date-pill p { margin: 0; font-size: .78rem; color: var(--muted); }
+    .date-pill strong { display: block; font-size: .9rem; }
+    main { padding: 1.1rem 1rem; }
+    .section-copy { margin: 0; color: var(--muted); font-size: .92rem; }
+    .grid { display: grid; gap: .75rem; }
+    .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    .two { grid-template-columns: 1fr; }
+    .card { background: var(--white); border: 1px solid rgba(255,255,255,.9); border-radius: .55rem; padding: 1rem; box-shadow: 0 4px 18px rgba(28,38,31,.05); }
+    .metric { min-height: 7rem; }
+    .metric-top, .row { display: flex; align-items: center; justify-content: space-between; gap: .7rem; }
+    .metric label, .stat label { color: var(--muted); font-size: .78rem; font-weight: 700; }
+    .metric b { display: block; margin-top: .75rem; font-size: 1.75rem; line-height: 1; }
+    .metric small, .stat small { color: var(--muted); }
+    .bar { height: .5rem; margin-top: .8rem; overflow: hidden; border-radius: 99px; background: #edf1eb; }
+    .bar span { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--leaf); }
+    .progress .bar span { background: var(--coral); }
+    .field { display: block; background: white; border-radius: .55rem; padding: .85rem; box-shadow: 0 4px 18px rgba(28,38,31,.05); }
+    .field span { display: block; margin-bottom: .45rem; font-size: .9rem; font-weight: 750; }
+    input, textarea {
+      width: 100%; border: 1px solid var(--line); border-radius: .45rem; outline: none;
+      background: white; color: var(--ink);
+    }
+    input { height: 3rem; padding: 0 .8rem; font-size: 1.1rem; font-weight: 700; }
+    textarea { min-height: 8rem; padding: .8rem; resize: vertical; }
+    input:focus, textarea:focus { box-shadow: 0 0 0 4px rgba(62,127,93,.18); border-color: var(--leaf); }
+    .jsonbox { min-height: 25rem; background: #101815; color: #e7fff2; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .78rem; line-height: 1.55; }
+    .btn {
+      min-height: 3.35rem; border: 0; border-radius: .55rem; padding: 0 1rem;
+      background: var(--leaf); color: white; font-weight: 850; box-shadow: var(--shadow);
+    }
+    .btn.dark { background: var(--ink); }
+    .status { border-radius: .55rem; padding: .85rem 1rem; font-size: .9rem; font-weight: 750; }
+    .success { background: #eaf8ef; color: #1e6c3e; }
+    .warn { background: #fff5d9; color: #7a4b05; }
+    .ledger { display: grid; gap: .75rem; }
+    .statgrid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: .5rem; margin-top: .8rem; }
+    .stat { border-radius: .45rem; background: #f5f6f3; padding: .65rem; }
+    .stat b { display: block; margin-top: .15rem; overflow-wrap: anywhere; }
+    .nav {
+      position: fixed; left: 0; right: 0; bottom: 0; z-index: 4;
+      background: rgba(255,255,255,.93); backdrop-filter: blur(18px);
+      border-top: 1px solid rgba(255,255,255,.9);
+      padding: .5rem .45rem max(.55rem, env(safe-area-inset-bottom));
+      box-shadow: 0 -12px 40px rgba(30,40,34,.1);
+    }
+    .nav-inner { max-width: 980px; margin: 0 auto; display: grid; grid-template-columns: repeat(8, 1fr); gap: .25rem; }
+    .nav button {
+      height: 3.35rem; border: 0; border-radius: .45rem; background: transparent; color: #69736c;
+      font-size: .6rem; font-weight: 800;
+    }
+    .nav button.active { background: var(--leaf); color: white; }
+    .share-wrap { display: flex; justify-content: center; }
+    .share {
+      width: min(100%, 390px); aspect-ratio: 9 / 16; border-radius: .65rem;
+      background: #17201d; color: white; padding: 1.45rem; box-shadow: var(--shadow);
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .share h2 { margin: .25rem 0 0; color: white; font-size: 2rem; line-height: 1.05; }
+    .score { margin: 1.6rem 0; border-radius: .6rem; background: rgba(255,255,255,.1); padding: 1.15rem; }
+    .score b { display: block; font-size: 3.8rem; line-height: 1; }
+    .share-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .7rem; }
+    .share-stat { border-radius: .55rem; background: rgba(255,255,255,.1); padding: .75rem; }
+    .share-stat small { color: rgba(255,255,255,.64); }
+    .share-stat b { display: block; margin-top: .15rem; font-size: 1.1rem; }
+    .share-bottom { margin-top: auto; display: grid; gap: .95rem; }
+    .share-bottom p { margin: .2rem 0 0; font-size: 1.25rem; font-weight: 850; }
+    .footer { border-top: 1px solid rgba(255,255,255,.16); padding-top: .9rem; text-align: center; color: rgba(255,255,255,.7); font-size: .9rem; }
+    .gold { color: var(--gold); }
+    .photo-preview {
+      display: none; width: 100%; max-height: 18rem; object-fit: cover;
+      border-radius: .55rem; border: 1px solid var(--line); margin-top: .75rem;
+    }
+    .source-list { margin: .8rem 0 0; padding-left: 1.1rem; color: var(--muted); font-size: .9rem; }
+    .source-list li { margin: .25rem 0; }
+    .hidden { display: none !important; }
+    @media (min-width: 720px) {
+      h1 { font-size: 1.65rem; }
+      header, main { padding-left: 1.5rem; padding-right: 1.5rem; }
+      .metrics { grid-template-columns: repeat(4, minmax(0,1fr)); }
+      .two { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .statgrid { grid-template-columns: repeat(4, minmax(0,1fr)); }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div>
+        <p class="eyebrow">Reset Tracker</p>
+        <h1>Daily health board</h1>
+      </div>
+      <div class="date-pill">
+        <p id="todayLabel"></p>
+        <strong id="dayCount">0 days</strong>
+      </div>
+    </header>
+    <main id="screen"></main>
+  </div>
+  <nav class="nav">
+    <div class="nav-inner" id="nav"></div>
+  </nav>
+
+  <script>
+    const keys = {
+      entries: "reset-static.entries",
+      settings: "reset-static.settings",
+      history: "reset-static.history"
+    };
+    const defaultSettings = {
+      calorie_goal: 2200, protein_goal: 160, step_goal: 10000, water_goal: 2.5,
+      sleep_goal: 7.5, caffeine_limit: 400, creatine_goal: 5, goal_weight: 68
+    };
+    const tabs = [
+      ["today", "Today"], ["food", "Food AI"], ["log", "Log"], ["import", "Import"], ["ledger", "Ledger"],
+      ["trends", "Trends"], ["share", "Share"], ["settings", "Goals"]
+    ];
+    let active = "today";
+    let entries = read(keys.entries, []).sort((a,b) => b.date.localeCompare(a.date));
+    let settings = { ...defaultSettings, ...read(keys.settings, {}) };
+    let history = read(keys.history, []);
+
+    function read(key, fallback) {
+      try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
+    }
+    function write(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
+    function todayKey(date = new Date()) { return date.toISOString().slice(0, 10); }
+    function pretty(date) { return date ? new Date(date + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" }) : ""; }
+    function blank(date = todayKey()) {
+      return {
+        date, weight_kg: null, steps: null, water_liters: null, sleep_hours: null, mood_1_10: null, energy_1_10: null,
+        nutrition: { tracked: false, confidence: "medium", calories: null, protein_g: null, carbs_g: null, fat_g: null, fiber_g: null, caffeine_mg: null, creatine_g: null },
+        habits: {
+          workout: { completed: false, value: null, unit: "minutes", status: "missing" },
+          reading: { completed: false, value: null, unit: "minutes", status: "missing" },
+          meditation: { completed: false, value: null, unit: "minutes", status: "missing" },
+          water: { completed: false, value: null, unit: "liters", status: "missing" },
+          creatine: { completed: false, value: null, unit: "grams", status: "missing" }
+        },
+        data_quality: { nutrition_tracked: false, sleep_tracked: false, steps_tracked: false, weight_tracked: false, habits_tracked: "none", overall_confidence: "medium" },
+        notes: ""
+      };
+    }
+    function current(date = todayKey()) { return entries.find(e => e.date === date) || blank(date); }
+    function pct(value, goal) { return value == null || goal <= 0 ? 0 : Math.max(0, Math.min(100, Math.round(value / goal * 100))); }
+    function habitScore(entry) {
+      const habits = Object.values(entry.habits).filter(h => h.status !== "missing" || h.value != null);
+      if (!habits.length) return 0;
+      return Math.round(habits.filter(h => h.completed).length / habits.length * 100);
+    }
+    function hasAny(entry) {
+      return entry.weight_kg != null || entry.steps != null || entry.water_liters != null || entry.sleep_hours != null ||
+        entry.mood_1_10 != null || entry.energy_1_10 != null || entry.notes || entry.nutrition.tracked ||
+        Object.values(entry.habits).some(h => h.value != null || h.completed);
+    }
+    function lastDays(count) {
+      const byDate = new Map(entries.map(e => [e.date, e]));
+      return Array.from({ length: count }, (_, i) => {
+        const d = new Date(Date.now() - i * 86400000);
+        return byDate.get(todayKey(d)) || blank(todayKey(d));
+      });
+    }
+    function avg(values) {
+      const nums = values.filter(v => typeof v === "number" && Number.isFinite(v));
+      return nums.length ? Math.round(nums.reduce((a,b) => a+b, 0) / nums.length * 10) / 10 : null;
+    }
+    function insights(count) {
+      const days = lastDays(count);
+      return {
+        days,
+        loggedDays: days.filter(hasAny).length,
+        nutritionTracked: days.filter(e => e.nutrition.tracked).length,
+        sleepTracked: days.filter(e => e.data_quality.sleep_tracked || e.sleep_hours != null).length,
+        stepsTracked: days.filter(e => e.data_quality.steps_tracked || e.steps != null).length,
+        avgCalories: avg(days.filter(e => e.nutrition.tracked).map(e => e.nutrition.calories)),
+        avgProtein: avg(days.filter(e => e.nutrition.tracked).map(e => e.nutrition.protein_g)),
+        avgSteps: avg(days.filter(e => e.data_quality.steps_tracked || e.steps != null).map(e => e.steps)),
+        avgSleep: avg(days.filter(e => e.data_quality.sleep_tracked || e.sleep_hours != null).map(e => e.sleep_hours)),
+        avgMood: avg(days.map(e => e.mood_1_10)),
+        avgEnergy: avg(days.map(e => e.energy_1_10)),
+        avgHabitScore: avg(days.filter(hasAny).map(habitScore))
+      };
+    }
+    function saveEntries(next) { entries = next.sort((a,b) => b.date.localeCompare(a.date)); write(keys.entries, entries); render(); }
+    function saveSettings(next) { settings = next; write(keys.settings, settings); render(); }
+    function field(label, id, value, step = "1", min = "", max = "") {
+      return `<label class="field"><span>${label}</span><input id="${id}" type="number" inputmode="decimal" step="${step}" min="${min}" max="${max}" value="${value ?? ""}"></label>`;
+    }
+    function metric(label, value, unit, goal) {
+      return `<article class="card metric"><div class="metric-top"><label>${label}</label><span>${icon(label)}</span></div><b>${value ?? "-"}</b><small>${unit || "today"}</small>${goal ? `<div class="bar"><span style="width:${pct(typeof value === "number" ? value : null, goal)}%"></span></div>` : ""}</article>`;
+    }
+    function icon(label) {
+      const map = { Calories:"🔥", Protein:"🍽", Caffeine:"☕", Creatine:"✦", Weight:"⚖", Steps:"↟", Water:"◌", Sleep:"☾", Workout:"⌁", Reading:"⌕", Meditation:"♡", Mood:"♡", Energy:"↯", "Habit score":"▣", Confidence:"✓" };
+      return map[label] || "•";
+    }
+    function progress(label, value, goal, unit) {
+      return `<article class="card progress"><div class="row"><strong>${label}</strong><small>${value ?? "-"} / ${goal} ${unit}</small></div><div class="bar"><span style="width:${pct(value, goal)}%"></span></div></article>`;
+    }
+    function section(eyebrow, title, copy) {
+      return `<p class="eyebrow">${eyebrow}</p><h2>${title}</h2><p class="section-copy">${copy}</p>`;
+    }
+    function stat(label, value) { return `<div class="stat"><label>${label}</label><b>${value ?? "-"}</b></div>`; }
+
+    function renderToday() {
+      const e = current();
+      const cards = [
+        ["Calories", e.nutrition.tracked ? e.nutrition.calories : null, "kcal", settings.calorie_goal],
+        ["Protein", e.nutrition.protein_g, "g", settings.protein_goal], ["Carbs", e.nutrition.carbs_g, "g"], ["Fat", e.nutrition.fat_g, "g"],
+        ["Fiber", e.nutrition.fiber_g, "g"], ["Caffeine", e.nutrition.caffeine_mg, "mg", settings.caffeine_limit], ["Creatine", e.nutrition.creatine_g, "g", settings.creatine_goal],
+        ["Weight", e.weight_kg, "kg"], ["Steps", e.steps, "", settings.step_goal], ["Water", e.water_liters, "L", settings.water_goal], ["Sleep", e.sleep_hours, "h", settings.sleep_goal],
+        ["Workout", e.habits.workout.value, "min"], ["Reading", e.habits.reading.value, "min"], ["Meditation", e.habits.meditation.value, "min"],
+        ["Mood", e.mood_1_10, "/10"], ["Energy", e.energy_1_10, "/10"], ["Habit score", habitScore(e), "%"], ["Confidence", e.data_quality.overall_confidence, ""]
+      ];
+      return `${section("Today", "Current signal", e.date)}<div class="grid metrics" style="margin-top:1rem">${cards.map(c => metric(...c)).join("")}</div>
+      <div class="grid two" style="margin-top:.85rem">${progress("Calories", e.nutrition.tracked ? e.nutrition.calories : null, settings.calorie_goal, "kcal")}${progress("Protein", e.nutrition.protein_g, settings.protein_goal, "g")}${progress("Steps", e.steps, settings.step_goal, "steps")}${progress("Water", e.water_liters, settings.water_goal, "L")}${progress("Sleep", e.sleep_hours, settings.sleep_goal, "h")}${progress("Creatine", e.nutrition.creatine_g, settings.creatine_goal, "g")}</div>`;
+    }
+    function renderLog() {
+      const e = current();
+      return `${section("Quick log", "Fast daily entry", "Tap, enter, save.")}
+      <div class="grid two" style="margin-top:1rem">
+        ${field("Weight kg","weight_kg",e.weight_kg,"0.1")}${field("Steps","steps",e.steps)}${field("Water liters","water_liters",e.water_liters,"0.1")}${field("Sleep hours","sleep_hours",e.sleep_hours,"0.1")}
+        ${field("Workout minutes","workout",e.habits.workout.value)}${field("Reading minutes","reading",e.habits.reading.value)}${field("Meditation/prayer minutes","meditation",e.habits.meditation.value)}
+        ${field("Mood 1-10","mood_1_10",e.mood_1_10,"1","1","10")}${field("Energy 1-10","energy_1_10",e.energy_1_10,"1","1","10")}
+      </div>
+      <label class="field" style="margin-top:.75rem"><span>Notes</span><textarea id="notes">${e.notes || ""}</textarea></label>
+      <button class="btn" style="margin-top:.9rem;width:100%" onclick="saveLog()">Save log</button><div id="logStatus"></div>`;
+    }
+    function val(id) { const v = document.getElementById(id).value; return v === "" ? null : Number(v); }
+    function saveLog() {
+      const e = current();
+      e.weight_kg = val("weight_kg"); e.steps = val("steps"); e.water_liters = val("water_liters"); e.sleep_hours = val("sleep_hours");
+      e.mood_1_10 = val("mood_1_10"); e.energy_1_10 = val("energy_1_10"); e.notes = document.getElementById("notes").value;
+      [["workout","minutes"],["reading","minutes"],["meditation","minutes"]].forEach(([k, unit]) => {
+        const value = val(k); e.habits[k] = { completed: (value ?? 0) > 0, value, unit, status: value == null ? "missing" : (value ?? 0) > 0 ? "completed" : "not_completed" };
+      });
+      e.habits.water = { completed: e.water_liters != null, value: e.water_liters, unit: "liters", status: e.water_liters == null ? "missing" : "completed" };
+      e.data_quality = { ...e.data_quality, weight_tracked: e.weight_kg != null, steps_tracked: e.steps != null, sleep_tracked: e.sleep_hours != null, habits_tracked: "partial" };
+      saveEntries([e, ...entries.filter(x => x.date !== e.date)]);
+      document.getElementById("logStatus").innerHTML = `<div class="status success" style="margin-top:.8rem">Saved today's log.</div>`;
+    }
+    function sampleJson() {
+      return JSON.stringify({ date: todayKey(), replace_existing: false, weight_kg: null, steps: null, water_liters: null, sleep_hours: null, mood_1_10: null, energy_1_10: null,
+        nutrition: { tracked: true, confidence: "high", calories: null, protein_g: null, carbs_g: null, fat_g: null, fiber_g: null, caffeine_mg: null, creatine_g: null },
+        habits: { workout:{completed:false,value:0,unit:"minutes",status:"not_completed"}, reading:{completed:false,value:0,unit:"minutes",status:"not_completed"}, meditation:{completed:false,value:0,unit:"minutes",status:"not_completed"}, water:{completed:false,value:null,unit:"liters",status:"missing"}, creatine:{completed:false,value:null,unit:"grams",status:"missing"} },
+        data_quality: { nutrition_tracked: true, sleep_tracked: false, steps_tracked: false, weight_tracked: false, habits_tracked: "partial", overall_confidence: "medium" }, notes: "" }, null, 2);
+    }
+    function renderImport() {
+      return `${section("ChatGPT import", "Paste JSON", "Existing dates are protected unless replace_existing is true.")}
+      <textarea id="json" class="jsonbox" spellcheck="false" style="margin-top:1rem">${sampleJson()}</textarea>
+      <button class="btn dark" style="margin-top:.9rem;width:100%" onclick="doImport()">Validate and import</button><div id="importStatus"></div>
+      <article class="card" style="margin-top:1rem"><strong>Import history</strong><div class="ledger" style="margin-top:.7rem">${history.slice(0,5).map(h => `<div class="stat row"><b>${h.date}</b><small>${h.replaced_existing ? "replaced" : "imported"}</small></div>`).join("") || "<p class='section-copy'>No imports yet.</p>"}</div></article>`;
+    }
+    function renderFood() {
+      return `${section("AI food log", "Natural language and photos", "Type what you ate, attach a label or food photo, then review before saving.")}
+      <article class="card" style="margin-top:1rem">
+        <label class="field" style="box-shadow:none;padding:0"><span>Food description</span><textarea id="foodText" placeholder="Example: 1 cup Greek yogurt, banana, 2 eggs, or paste nutrition-label text here"></textarea></label>
+        <label class="field" style="margin-top:.75rem;box-shadow:none"><span>Photo or nutrition label</span><input id="foodPhoto" type="file" accept="image/*" capture="environment" onchange="previewFoodPhoto(event)"><img id="foodPreview" class="photo-preview" alt="Selected food photo preview"></label>
+        <ul class="source-list">
+          <li>First: read nutrition labels and package text from the photo.</li>
+          <li>Second: if no label is visible, look up the exact brand and food online.</li>
+          <li>Last: estimate only when label and brand evidence are unavailable.</li>
+        </ul>
+        <button class="btn dark" style="margin-top:.9rem;width:100%" onclick="analyzeFood()">Analyze food</button>
+        <div id="foodStatus"></div>
+      </article>
+      <article class="card" id="foodReview" style="display:none;margin-top:1rem">
+        <div class="row"><strong>Review nutrition</strong><small id="foodEvidence">Not analyzed</small></div>
+        <div class="grid two" style="margin-top:.8rem">
+          ${field("Calories","food_calories",null)}${field("Protein g","food_protein",null)}${field("Carbs g","food_carbs",null)}${field("Fat g","food_fat",null)}
+          ${field("Fiber g","food_fiber",null)}${field("Caffeine mg","food_caffeine",null)}${field("Creatine g","food_creatine",null,"0.1")}
+        </div>
+        <label class="field" style="margin-top:.75rem"><span>Food note</span><textarea id="foodNote"></textarea></label>
+        <button class="btn" style="margin-top:.9rem;width:100%" onclick="addFoodToToday()">Add to today</button>
+      </article>`;
+    }
+    function previewFoodPhoto(event) {
+      const file = event.target.files && event.target.files[0];
+      const preview = document.getElementById("foodPreview");
+      if (!file || !preview) return;
+      preview.src = URL.createObjectURL(file);
+      preview.style.display = "block";
+    }
+    function extractFoodNumber(text, names) {
+      for (const name of names) {
+        const re = new RegExp(`${name}[^0-9]{0,16}([0-9]+(?:\\\\.[0-9]+)?)`, "i");
+        const match = text.match(re);
+        if (match) return Number(match[1]);
+      }
+      return null;
+    }
+    function setFoodField(id, value) {
+      const el = document.getElementById(id);
+      if (el) el.value = value ?? "";
+    }
+    function analyzeFood() {
+      const text = document.getElementById("foodText").value.trim();
+      const hasPhoto = document.getElementById("foodPhoto").files.length > 0;
+      const status = document.getElementById("foodStatus");
+      const extracted = {
+        calories: extractFoodNumber(text, ["calories", "kcal", "energy"]),
+        protein: extractFoodNumber(text, ["protein"]),
+        carbs: extractFoodNumber(text, ["carbs", "carbohydrate", "carbohydrates"]),
+        fat: extractFoodNumber(text, ["fat", "total fat"]),
+        fiber: extractFoodNumber(text, ["fiber", "fibre"]),
+        caffeine: extractFoodNumber(text, ["caffeine"]),
+        creatine: extractFoodNumber(text, ["creatine"])
+      };
+      const found = Object.values(extracted).some(value => value != null);
+      document.getElementById("foodReview").style.display = "block";
+      setFoodField("food_calories", extracted.calories);
+      setFoodField("food_protein", extracted.protein);
+      setFoodField("food_carbs", extracted.carbs);
+      setFoodField("food_fat", extracted.fat);
+      setFoodField("food_fiber", extracted.fiber);
+      setFoodField("food_caffeine", extracted.caffeine);
+      setFoodField("food_creatine", extracted.creatine);
+      document.getElementById("foodNote").value = text;
+      if (found) {
+        document.getElementById("foodEvidence").textContent = "Text/label values found";
+        status.innerHTML = `<div class="status success" style="margin-top:.8rem">I found nutrition-like numbers in the text. Review them before saving.</div>`;
+      } else if (hasPhoto) {
+        document.getElementById("foodEvidence").textContent = "Photo ready, AI backend needed";
+        status.innerHTML = `<div class="status warn" style="margin-top:.8rem">Photo upload is ready, but this static app cannot read labels or search the web until we add the AI backend.</div>`;
+      } else {
+        document.getElementById("foodEvidence").textContent = "Manual review needed";
+        status.innerHTML = `<div class="status warn" style="margin-top:.8rem">Add label text, nutrition numbers, or a photo. Real natural-language estimates need the AI backend.</div>`;
+      }
+    }
+    function addFoodToToday() {
+      const e = current();
+      const fields = {
+        calories: val("food_calories"),
+        protein_g: val("food_protein"),
+        carbs_g: val("food_carbs"),
+        fat_g: val("food_fat"),
+        fiber_g: val("food_fiber"),
+        caffeine_mg: val("food_caffeine"),
+        creatine_g: val("food_creatine")
+      };
+      e.nutrition.tracked = true;
+      e.nutrition.confidence = document.getElementById("foodEvidence").textContent.includes("backend") ? "low" : "medium";
+      Object.entries(fields).forEach(([key, value]) => {
+        if (value != null) e.nutrition[key] = (e.nutrition[key] ?? 0) + value;
+      });
+      e.data_quality.nutrition_tracked = true;
+      e.data_quality.overall_confidence = e.nutrition.confidence;
+      const note = document.getElementById("foodNote").value.trim();
+      if (note) e.notes = [e.notes, `Food: ${note}`].filter(Boolean).join("\\n");
+      saveEntries([e, ...entries.filter(x => x.date !== e.date)]);
+      active = "today";
+      render();
+    }
+    function num(v) { return typeof v === "number" && Number.isFinite(v) ? v : null; }
+    function bool(v) { return v === true; }
+    function habit(source, fallback) { source = source && typeof source === "object" ? source : {}; return { completed: bool(source.completed), value: num(source.value), unit: typeof source.unit === "string" ? source.unit : fallback.unit, status: typeof source.status === "string" ? source.status : fallback.status }; }
+    function normalize(source) {
+      if (!source || typeof source !== "object") throw new Error("Import must be a JSON object.");
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(source.date || "")) throw new Error("Import requires a date in YYYY-MM-DD format.");
+      const e = blank(source.date), n = source.nutrition || {}, h = source.habits || {}, q = source.data_quality || {};
+      Object.assign(e, { weight_kg: num(source.weight_kg), steps: num(source.steps), water_liters: num(source.water_liters), sleep_hours: num(source.sleep_hours), mood_1_10: num(source.mood_1_10), energy_1_10: num(source.energy_1_10), notes: typeof source.notes === "string" ? source.notes : "" });
+      e.nutrition = { tracked: bool(n.tracked), confidence: n.confidence || "medium", calories: num(n.calories), protein_g: num(n.protein_g), carbs_g: num(n.carbs_g), fat_g: num(n.fat_g), fiber_g: num(n.fiber_g), caffeine_mg: num(n.caffeine_mg), creatine_g: num(n.creatine_g) };
+      e.habits = { workout: habit(h.workout, e.habits.workout), reading: habit(h.reading, e.habits.reading), meditation: habit(h.meditation, e.habits.meditation), water: habit(h.water, e.habits.water), creatine: habit(h.creatine, e.habits.creatine) };
+      e.data_quality = { nutrition_tracked: bool(q.nutrition_tracked) || bool(n.tracked), sleep_tracked: bool(q.sleep_tracked) || e.sleep_hours != null, steps_tracked: bool(q.steps_tracked) || e.steps != null, weight_tracked: bool(q.weight_tracked) || e.weight_kg != null, habits_tracked: q.habits_tracked || "partial", overall_confidence: q.overall_confidence || "medium" };
+      return { entry: e, replace: bool(source.replace_existing) };
+    }
+    function doImport() {
+      const raw = document.getElementById("json").value, box = document.getElementById("importStatus");
+      try {
+        const parsed = JSON.parse(raw), payload = normalize(parsed), exists = entries.some(e => e.date === payload.entry.date);
+        if (exists && !payload.replace) throw new Error(`A record already exists for ${payload.entry.date}. Set replace_existing to true to replace it.`);
+        entries = [payload.entry, ...entries.filter(e => e.date !== payload.entry.date)].sort((a,b) => b.date.localeCompare(a.date));
+        history = [{ id: crypto.randomUUID(), imported_at: new Date().toISOString(), date: payload.entry.date, raw_json: raw, replaced_existing: exists && payload.replace }, ...history];
+        write(keys.entries, entries); write(keys.history, history);
+        box.innerHTML = `<div class="status success" style="margin-top:.8rem">${exists ? "Replaced" : "Imported"} ${payload.entry.date}.</div>`;
+        document.getElementById("dayCount").textContent = `${entries.length} days`;
+      } catch (err) { box.innerHTML = `<div class="status warn" style="margin-top:.8rem">${err.message || "Import failed."}</div>`; }
+    }
+    function renderLedger() {
+      return `${section("Ledger", "Daily records", `${entries.length} saved day${entries.length === 1 ? "" : "s"}`)}
+      <div class="ledger" style="margin-top:1rem">${entries.map(e => `<article class="card"><div class="row"><div><h3>${e.date}</h3><p class="section-copy">${e.notes || "No notes"}</p></div><b>${habitScore(e)}%</b></div><div class="statgrid">${stat("Calories", e.nutrition.tracked ? e.nutrition.calories : "untracked")}${stat("Protein", e.nutrition.protein_g)}${stat("Steps", e.steps)}${stat("Weight", e.weight_kg == null ? null : e.weight_kg + " kg")}${stat("Nutrition", e.nutrition.tracked ? "tracked" : "untracked")}${stat("Confidence", e.data_quality.overall_confidence)}</div></article>`).join("") || `<div class="card">No daily records yet. Add a quick log or paste a ChatGPT import.</div>`}</div>`;
+    }
+    function insightGrid(title, data, total) {
+      return `<article class="card"><h3>${title}</h3><div class="statgrid">${stat("Avg calories", data.avgCalories)}${stat("Avg protein", data.avgProtein == null ? null : data.avgProtein + "g")}${stat("Avg steps", data.avgSteps)}${stat("Avg sleep", data.avgSleep == null ? null : data.avgSleep + "h")}${stat("Avg mood", data.avgMood)}${stat("Avg energy", data.avgEnergy)}${stat("Habit score avg", data.avgHabitScore == null ? null : data.avgHabitScore + "%")}${stat("Nutrition tracked", data.nutritionTracked + "/" + total)}${stat("Sleep tracked", data.sleepTracked + "/" + total)}${stat("Steps tracked", data.stepsTracked + "/" + total)}${stat("Logged days", data.loggedDays + "/" + total)}</div></article>`;
+    }
+    function renderTrends() {
+      const seven = insights(7), fourteen = insights(14);
+      const warnings = [seven.nutritionTracked < 5 ? "Calorie averages may be misleading because nutrition was tracked fewer than 5 of the last 7 days." : "", seven.sleepTracked < 5 ? "Sleep insights may be incomplete." : "", seven.loggedDays < 5 ? "More logged days are needed for reliable trends." : ""].filter(Boolean);
+      return `${section("Trends", "7-day and 14-day signal", "Averages only count tracked days where required.")}<div class="grid" style="margin-top:1rem">${insightGrid("Last 7 days", seven, 7)}${insightGrid("Last 14 days", fourteen, 14)}${warnings.map(w => `<div class="status warn">${w}</div>`).join("")}</div>`;
+    }
+    function renderShare() {
+      const data = insights(7), days = data.days, workouts = days.filter(e => e.habits.workout.completed).length, creatine = days.filter(e => e.habits.creatine.completed || (e.nutrition.creatine_g ?? 0) >= settings.creatine_goal).length;
+      const totalSteps = days.reduce((sum, e) => sum + (e.steps || 0), 0);
+      const score = Math.round(((data.loggedDays/7)*.45 + (workouts/7)*.2 + (data.nutritionTracked/7)*.2 + (creatine/7)*.15) * 100);
+      const sorted = [...days].sort((a,b) => a.date.localeCompare(b.date));
+      const win = score >= 75 ? "Strong consistency stack." : data.loggedDays >= 5 ? "You kept the thread alive." : "You restarted the signal.";
+      const focus = data.nutritionTracked < 5 ? "Track food at least five days." : data.avgSleep != null && data.avgSleep < settings.sleep_goal ? "Protect the sleep window." : "Keep the basics boring.";
+      return `${section("Share card", "Weekly report", "Screenshot-friendly, no exact weight by default.")}<div class="share-wrap" style="margin-top:1rem"><div class="share"><p class="eyebrow gold">Weekly Reset Report</p><h2>${pretty(sorted[0].date)} - ${pretty(sorted.at(-1).date)}</h2><div class="score"><small>Consistency score</small><b>${score}%</b></div><div class="share-grid">${shareStat("Days logged", data.loggedDays + "/7")}${shareStat("Workouts", workouts)}${shareStat("Food tracked", data.nutritionTracked + "/7")}${shareStat("Avg protein", data.avgProtein == null ? "-" : data.avgProtein + "g")}${shareStat("Total steps", totalSteps.toLocaleString())}${shareStat("Creatine", creatine + "/7")}</div><div class="share-bottom"><div><small class="gold">Weekly Win</small><p>${win}</p></div><div><small class="gold">Focus Next Week</small><p>${focus}</p></div><div class="footer">Progress over perfection.</div></div></div></div>`;
+    }
+    function shareStat(label, value) { return `<div class="share-stat"><small>${label}</small><b>${value}</b></div>`; }
+    function renderSettings() {
+      const fields = [["calorie_goal","Calorie goal","1"],["protein_goal","Protein goal","1"],["step_goal","Step goal","1"],["water_goal","Water goal","0.1"],["sleep_goal","Sleep goal","0.1"],["caffeine_limit","Caffeine limit","1"],["creatine_goal","Creatine goal","0.1"],["goal_weight","Goal weight","0.1"]];
+      return `${section("Goals", "Personal targets", "Stored locally in this browser.")}<div class="grid two" style="margin-top:1rem">${fields.map(([id,label,step]) => field(label, id, settings[id], step)).join("")}</div><button class="btn" style="margin-top:.9rem;width:100%" onclick="saveGoals()">Save goals</button><div id="goalStatus"></div>`;
+    }
+    function saveGoals() {
+      const next = {};
+      Object.keys(defaultSettings).forEach(k => next[k] = Number(document.getElementById(k).value));
+      saveSettings(next);
+      document.getElementById("goalStatus").innerHTML = `<div class="status success" style="margin-top:.8rem">Goals saved.</div>`;
+    }
+    function renderNav() {
+      document.getElementById("nav").innerHTML = tabs.map(([id, label]) => `<button class="${active === id ? "active" : ""}" onclick="active='${id}';render()">${label}</button>`).join("");
+    }
+    function render() {
+      document.getElementById("todayLabel").textContent = pretty(todayKey());
+      document.getElementById("dayCount").textContent = `${entries.length} days`;
+      renderNav();
+      const map = { today: renderToday, food: renderFood, log: renderLog, import: renderImport, ledger: renderLedger, trends: renderTrends, share: renderShare, settings: renderSettings };
+      document.getElementById("screen").innerHTML = map[active]();
+    }
+    render();
+    if ("serviceWorker" in navigator && location.protocol !== "file:") {
+      window.addEventListener("load", () => {
+        navigator.serviceWorker.register("./sw.js").catch(() => {});
+      });
+    }
+  </script>
+</body>
+</html>
