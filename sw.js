@@ -1,4 +1,4 @@
-const CACHE_NAME = "reset-health-tracker-v4";
+const CACHE_NAME = "reset-health-tracker-v5";
 const APP_SHELL = [
   "./",
   "./index.html",

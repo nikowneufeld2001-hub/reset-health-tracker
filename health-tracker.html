@@ -57,6 +57,11 @@
     .card { background: var(--white); border: 1px solid rgba(255,255,255,.9); border-radius: .55rem; padding: 1rem; box-shadow: 0 4px 18px rgba(28,38,31,.05); }
     .metric { min-height: 7rem; }
     .metric-top, .row { display: flex; align-items: center; justify-content: space-between; gap: .7rem; }
+    .metric-icon {
+      display: inline-grid; place-items: center; width: 1.7rem; height: 1.7rem;
+      border-radius: 999px; background: #edf3ec; color: var(--leaf);
+      font-size: .72rem; font-weight: 900; letter-spacing: 0;
+    }
     .metric label, .stat label { color: var(--muted); font-size: .78rem; font-weight: 700; }
     .metric b { display: block; margin-top: .75rem; font-size: 1.75rem; line-height: 1; }
     .metric small, .stat small { color: var(--muted); }
@@ -238,10 +243,10 @@
       return `<label class="field"><span>${label}</span><input id="${id}" type="number" inputmode="decimal" step="${step}" min="${min}" max="${max}" value="${value ?? ""}"></label>`;
     }
     function metric(label, value, unit, goal) {
-      return `<article class="card metric"><div class="metric-top"><label>${label}</label><span>${icon(label)}</span></div><b>${value ?? "-"}</b><small>${unit || "today"}</small>${goal ? `<div class="bar"><span style="width:${pct(typeof value === "number" ? value : null, goal)}%"></span></div>` : ""}</article>`;
+      return `<article class="card metric"><div class="metric-top"><label>${label}</label><span class="metric-icon">${icon(label)}</span></div><b>${value ?? "-"}</b><small>${unit || "today"}</small>${goal ? `<div class="bar"><span style="width:${pct(typeof value === "number" ? value : null, goal)}%"></span></div>` : ""}</article>`;
     }
     function icon(label) {
-      const map = { Calories:"🔥", Protein:"🍽", Caffeine:"☕", Creatine:"✦", Weight:"⚖", Steps:"↟", Water:"◌", Sleep:"☾", Workout:"⌁", Reading:"⌕", Meditation:"♡", Mood:"♡", Energy:"↯", "Habit score":"▣", Confidence:"✓" };
+      const map = { Calories:"CAL", Protein:"PRO", Carbs:"CAR", Fat:"FAT", Fiber:"FIB", Caffeine:"CAF", Creatine:"CRE", Weight:"WT", Steps:"STP", Water:"H2O", Sleep:"SLP", Workout:"FIT", Reading:"RD", Meditation:"MIN", Mood:"MO", Energy:"EN", "Habit score":"HS", Confidence:"OK" };
       return map[label] || "•";
     }
     function progress(label, value, goal, unit) {
