@@ -1,45 +1,30 @@
-const CACHE_NAME = "reset-life-dashboard-v1";
-const APP_SHELL = [
-  "./",
-  "./index.html",
-  "./manifest.webmanifest",
-  "./icons/icon-180.png",
-  "./icons/icon-192.png",
-  "./icons/icon-512.png",
-  "./icons/maskable-512.png"
+const CACHE_NAMES = [
+  "reset-health-tracker-v1",
+  "reset-health-tracker-v2",
+  "reset-health-tracker-v3",
+  "reset-health-tracker-v4",
+  "reset-health-tracker-v5",
+  "reset-health-tracker-v6",
+  "reset-health-tracker-v7",
+  "reset-health-tracker-v8",
+  "reset-health-tracker-v9",
+  "reset-health-tracker-v10",
+  "reset-life-dashboard-v1"
 ];
 
 self.addEventListener("install", (event) => {
-  event.waitUntil(caches.open(CACHE_NAME).then((cache) => cache.addAll(APP_SHELL)));
+  event.waitUntil(Promise.resolve());
   self.skipWaiting();
 });
 
 self.addEventListener("activate", (event) => {
-  event.waitUntil(caches.keys().then((keys) => Promise.all(keys.filter((key) => key !== CACHE_NAME).map((key) => caches.delete(key)))));
-  self.clients.claim();
-});
-
-self.addEventListener("fetch", (event) => {
-  if (event.request.method !== "GET") return;
-  if (event.request.mode === "navigate" || event.request.destination === "document") {
-    event.respondWith(
-      fetch(event.request)
-        .then((response) => {
-          const copy = response.clone();
-          caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-          return response;
-        })
-        .catch(() => caches.match(event.request).then((cached) => cached || caches.match("./index.html")))
-    );
-    return;
-  }
-  event.respondWith(
-    fetch(event.request)
-      .then((response) => {
-        const copy = response.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(event.request, copy));
-        return response;
-      })
-      .catch(() => caches.match(event.request))
+  event.waitUntil(
+    caches.keys()
+      .then((keys) => Promise.all(keys.filter((key) => CACHE_NAMES.includes(key) || key.startsWith("reset-")).map((key) => caches.delete(key))))
+      .then(() => self.registration.unregister())
+      .then(() => self.clients.matchAll({ type: "window" }))
+      .then((clients) => clients.forEach((client) => client.navigate(client.url)))
   );
 });
+
+self.addEventListener("fetch", () => {});
