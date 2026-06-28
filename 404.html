@@ -22,6 +22,8 @@
       --leaf-soft: #e7f0e8;
       --coral: #df6f52;
       --gold: #d8a340;
+      --blue: #3478f6;
+      --violet: #7b61ff;
       --line: #dfe7df;
       --white: rgba(255,255,255,.93);
       --shadow: 0 18px 60px rgba(36,45,66,.10);
@@ -121,7 +123,7 @@
       padding: .5rem .45rem max(.55rem, env(safe-area-inset-bottom));
       box-shadow: 0 -12px 40px rgba(30,40,34,.1);
     }
-    .nav-inner { max-width: 1040px; margin: 0 auto; display: grid; grid-template-columns: repeat(8, 1fr); gap: .25rem; }
+    .nav-inner { max-width: 1040px; margin: 0 auto; display: grid; grid-template-columns: repeat(10, 1fr); gap: .25rem; }
     .nav button {
       height: 3.35rem; border: 0; border-radius: .48rem; background: transparent; color: #69736c;
       font-size: .58rem; font-weight: 850;
@@ -144,6 +146,23 @@
     .share-bottom p { margin: .2rem 0 0; font-size: 1.12rem; font-weight: 850; }
     .footer { border-top: 1px solid rgba(255,255,255,.16); padding-top: .9rem; text-align: center; color: rgba(255,255,255,.7); font-size: .9rem; }
     .gold { color: var(--gold); }
+    .ring-row { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: .75rem; margin-top: 1rem; }
+    .ring-card { display: grid; grid-template-columns: 4.5rem 1fr; align-items: center; gap: .85rem; }
+    .ring {
+      width: 4.5rem; aspect-ratio: 1; border-radius: 999px;
+      display: grid; place-items: center;
+      background: conic-gradient(var(--blue) var(--progress), #e9eef5 0);
+      box-shadow: inset 0 0 0 .55rem white;
+      font-weight: 900;
+    }
+    .ring.violet { background: conic-gradient(var(--violet) var(--progress), #eeeafc 0); }
+    .ring.coral { background: conic-gradient(var(--coral) var(--progress), #f8e8e1 0); }
+    .skill-list { display: grid; gap: .75rem; margin-top: 1rem; }
+    .skill-card { border-left: .28rem solid var(--blue); }
+    .skill-card.violet { border-left-color: var(--violet); }
+    .skill-card.coral { border-left-color: var(--coral); }
+    .skill-meta { display: flex; gap: .45rem; flex-wrap: wrap; margin-top: .55rem; }
+    .skill-meta span { border-radius: 999px; background: #f0f4fb; color: #315c9c; padding: .35rem .55rem; font-size: .76rem; font-weight: 850; }
     @media (min-width: 720px) {
       h1 { font-size: 1.58rem; }
       header, main { padding-left: 1.5rem; padding-right: 1.5rem; }
@@ -177,7 +196,8 @@
     const keys = {
       entries: "reset-static.entries",
       settings: "reset-static.settings",
-      history: "reset-static.history"
+      history: "reset-static.history",
+      skills: "reset-static.skills"
     };
     const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Chicago";
     const defaultSettings = {
@@ -193,11 +213,12 @@
     };
     const tabs = [
       ["today", "Today"], ["chat", "ChatGPT"], ["log", "Log"], ["import", "Import"],
-      ["ledger", "Ledger"], ["insights", "Insights"], ["share", "Share"], ["settings", "Goals"]
+      ["reading", "Reading"], ["skills", "Skills"], ["ledger", "Ledger"], ["insights", "Insights"], ["share", "Share"], ["settings", "Goals"]
     ];
     let settings = { ...defaultSettings, ...read(keys.settings, {}) };
     let entries = read(keys.entries, []).map(ensureEntry).sort((a,b) => b.date.localeCompare(a.date));
     let history = read(keys.history, []);
+    let skillRecords = read(keys.skills, []).map(ensureSkillRecord).sort((a,b) => b.date.localeCompare(a.date));
     let active = "today";
     let selectedDate = todayKey();
     let periodDays = 7;
@@ -206,6 +227,28 @@
       try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
     }
     function write(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
+    const skillTargets = {
+      "Handstand hold": { unit: "sec", target: 60, color: "blue" },
+      "Handstand pushups": { unit: "reps", target: 10, color: "coral" },
+      "Planche": { unit: "sec", target: 10, color: "violet" },
+      "L-sit": { unit: "sec", target: 60, color: "blue" },
+      "Front lever": { unit: "sec", target: 15, color: "violet" },
+      "Back lever": { unit: "sec", target: 15, color: "violet" },
+      "Muscle-up": { unit: "reps", target: 10, color: "coral" },
+      "Pull-ups": { unit: "reps", target: 20, color: "coral" }
+    };
+    const bibleChapterCounts = {
+      Genesis: 50, Exodus: 40, Leviticus: 27, Numbers: 36, Deuteronomy: 34, Joshua: 24, Judges: 21, Ruth: 4,
+      "1 Samuel": 31, "2 Samuel": 24, "1 Kings": 22, "2 Kings": 25, "1 Chronicles": 29, "2 Chronicles": 36,
+      Ezra: 10, Nehemiah: 13, Esther: 10, Job: 42, Psalms: 150, Proverbs: 31, Ecclesiastes: 12, "Song of Solomon": 8,
+      Isaiah: 66, Jeremiah: 52, Lamentations: 5, Ezekiel: 48, Daniel: 12, Hosea: 14, Joel: 3, Amos: 9, Obadiah: 1,
+      Jonah: 4, Micah: 7, Nahum: 3, Habakkuk: 3, Zephaniah: 3, Haggai: 2, Zechariah: 14, Malachi: 4,
+      Matthew: 28, Mark: 16, Luke: 24, John: 21, Acts: 28, Romans: 16, "1 Corinthians": 16, "2 Corinthians": 13,
+      Galatians: 6, Ephesians: 6, Philippians: 4, Colossians: 4, "1 Thessalonians": 5, "2 Thessalonians": 3,
+      "1 Timothy": 6, "2 Timothy": 4, Titus: 3, Philemon: 1, Hebrews: 13, James: 5, "1 Peter": 5, "2 Peter": 3,
+      "1 John": 5, "2 John": 1, "3 John": 1, Jude: 1, Revelation: 22
+    };
+    const bibleTotalChapters = Object.values(bibleChapterCounts).reduce((a,b) => a + b, 0);
     function appTimeZone() { return settings?.time_zone || browserTimeZone; }
     function todayKey(date = new Date()) {
       const parts = new Intl.DateTimeFormat("en-US", {
@@ -269,13 +312,14 @@
       out.screen_time = { ...base.screen_time, ...(input?.screen_time || {}) };
       out.mood_detail = { ...base.mood_detail, ...(input?.mood_detail || {}) };
       out.mood_detail.tags = Array.isArray(out.mood_detail.tags) ? out.mood_detail.tags : [];
+      delete out.skill_records;
       return out;
     }
     function normalizeBookBlock(value) {
       const sessions = Array.isArray(value?.sessions) ? value.sessions : Array.isArray(value) ? value : [];
       const normalized = sessions.map((s) => ({
         book: s.book || s.book_title || "",
-        chapters: Array.isArray(s.chapters) ? s.chapters : s.chapter ? [s.chapter] : [],
+        chapters: normalizeChapters(s.chapters ?? s.chapter),
         pages: num(s.pages),
         minutes: num(s.minutes),
         notes: s.notes || ""
@@ -288,6 +332,56 @@
         books
       };
     }
+    function normalizeChapters(value) {
+      const pieces = Array.isArray(value) ? value : value == null || value === "" ? [] : `${value}`.split(",");
+      const chapters = [];
+      pieces.forEach((piece) => {
+        if (typeof piece === "number" && Number.isFinite(piece)) chapters.push(piece);
+        if (typeof piece === "string") {
+          const clean = piece.trim();
+          const range = clean.match(/^(\d+)\s*[-–]\s*(\d+)$/);
+          if (range) {
+            const start = Number(range[1]);
+            const end = Number(range[2]);
+            for (let i = Math.min(start, end); i <= Math.max(start, end); i++) chapters.push(i);
+          } else if (/^\d+$/.test(clean)) chapters.push(Number(clean));
+        }
+      });
+      return [...new Set(chapters)].sort((a,b) => a - b);
+    }
+    function bibleChapterKey(book, chapter) {
+      return book && chapter ? `${book} ${chapter}` : "";
+    }
+    function bibleCoverage(days = entries) {
+      const read = new Set();
+      days.forEach((entry) => {
+        ensureEntry(entry).bible.sessions.forEach((session) => {
+          session.chapters.forEach((chapter) => {
+            const key = bibleChapterKey(session.book, chapter);
+            if (key) read.add(key);
+          });
+        });
+      });
+      const byBook = {};
+      read.forEach((key) => {
+        const match = key.match(/^(.+) (\d+)$/);
+        if (!match) return;
+        const book = match[1];
+        byBook[book] = (byBook[book] || 0) + 1;
+      });
+      const completeBooks = Object.entries(bibleChapterCounts).filter(([book, count]) => (byBook[book] || 0) >= count).map(([book]) => book);
+      return { read, byBook, completeBooks, percent: Math.round(read.size / bibleTotalChapters * 1000) / 10 };
+    }
+    function bookHistory(blockName = "reading_detail") {
+      return entries.flatMap((entry) => ensureEntry(entry)[blockName].sessions.map((session) => ({
+        date: entry.date,
+        book: session.book,
+        chapters: session.chapters,
+        pages: session.pages,
+        minutes: session.minutes,
+        notes: session.notes
+      }))).filter(item => item.book);
+    }
     function normalizeWorkout(w) {
       if (!w || typeof w !== "object") return null;
       return {
@@ -295,6 +389,20 @@
         minutes: num(w.minutes ?? w.value),
         intensity: w.intensity || "",
         notes: w.notes || ""
+      };
+    }
+    function ensureSkillRecord(input) {
+      const skill = (input?.skill || "Handstand hold").toString();
+      const target = skillTargets[skill] || { unit: input?.unit || "sec", target: num(input?.target) || 30, color: "blue" };
+      return {
+        id: input?.id || crypto.randomUUID(),
+        date: /^\d{4}-\d{2}-\d{2}$/.test(input?.date || "") ? input.date : todayKey(),
+        skill,
+        value: num(input?.value),
+        unit: input?.unit || target.unit,
+        progression: input?.progression || "",
+        quality_1_10: num(input?.quality_1_10),
+        notes: input?.notes || ""
       };
     }
     function num(v) { return typeof v === "number" && Number.isFinite(v) ? v : null; }
@@ -341,7 +449,7 @@
       return hours ? `${hours}h ${mins}m` : `${mins}m`;
     }
     function backupPayload() {
-      return { app: "reset-health-tracker", version: 2, exported_at: new Date().toISOString(), entries, settings, history };
+      return { app: "reset-health-tracker", version: 3, exported_at: new Date().toISOString(), entries, settings, history, skillRecords };
     }
     function backupText() { return JSON.stringify(backupPayload(), null, 2); }
     function section(eyebrow, title, copy) {
@@ -396,17 +504,20 @@
     }
 
     function sampleJson() {
-      return JSON.stringify(ensureEntry({
+      return JSON.stringify({
+        ...ensureEntry({
         date: todayKey(),
         replace_existing: true,
         nutrition: { tracked: true, confidence: "medium", calories: null, protein_g: null, carbs_g: null, fat_g: null, fiber_g: null, caffeine_mg: null, creatine_g: null },
         sleep: { score: null, bedtime: "", wake_time: "", notes: "" },
         bible: { sessions: [{ book: "", chapters: [], pages: null, minutes: null, notes: "" }], total_pages: null, total_chapters: null, books: [] },
-        reading_detail: { sessions: [{ book: "", chapters: [], pages: null, minutes: null, notes: "" }], total_pages: null, total_chapters: null, books: [] },
+        reading_detail: { sessions: [{ book: "", chapters: [], pages: null, minutes: null, notes: "", category: "self improvement | fiction | biography | theology | other" }], total_pages: null, total_chapters: null, books: [] },
         workouts: [{ type: "cardio | weight training | calisthenics", minutes: null, intensity: "", notes: "" }],
         screen_time: { useful_minutes: null, entertainment_minutes: null, total_minutes: null, notes: "" },
         mood_detail: { stress_1_10: null, focus_1_10: null, motivation_1_10: null, tags: [], notes: "" }
-      }), null, 2);
+        }),
+        skill_records: [{ skill: "Handstand hold", date: todayKey(), value: null, unit: "sec", progression: "", quality_1_10: null, notes: "" }]
+      }, null, 2);
     }
     function chatGptPrompt() {
       return `You are my daily health, nutrition, Bible, reading, workout, screen-time, sleep, mood, and energy tracking assistant.
@@ -419,7 +530,10 @@ Important:
 - For food photos: read labels first, use exact product info second, estimate only when needed.
 - Keep workout type as cardio, weight training, calisthenics, mobility, sport, or unspecified.
 - Track Bible book names and chapters as structured data.
+- Preserve exact Bible books and chapters. Use chapter arrays like [1,2,3], not vague notes, so the app can calculate Bible completion.
+- Track other books as reading_detail sessions with book title, pages, chapters if applicable, minutes, notes, and category.
 - Track screen time as useful/work and entertainment when I provide it.
+- If I break a calisthenics skill record, include it in skill_records. Examples: handstand hold seconds, handstand pushup reps, planche progression hold time, L-sit, front lever, pull-ups.
 - At the end of the day, when I say "export my tracker JSON", return ONLY valid JSON in this shape:
 
 ${sampleJson()}`;
@@ -570,7 +684,10 @@ ${sampleJson()}`;
     function normalizeImport(source) {
       if (!source || typeof source !== "object") throw new Error("Import must be a JSON object.");
       if (!/^\d{4}-\d{2}-\d{2}$/.test(source.date || "")) throw new Error("Import requires a date in YYYY-MM-DD format.");
-      return { entry: ensureEntry(source), replace: bool(source.replace_existing) };
+      const importedSkills = Array.isArray(source.skill_records)
+        ? source.skill_records.map(record => ensureSkillRecord({ ...record, date: record.date || source.date })).filter(record => record.value != null)
+        : [];
+      return { entry: ensureEntry(source), replace: bool(source.replace_existing), skillRecords: importedSkills };
     }
     function renderImport() {
       return `${section("ChatGPT import", "Paste daily JSON", "Old exports still work. New exports unlock sleep, Bible, workout, screen-time, and mood visuals.")}
@@ -589,11 +706,15 @@ ${sampleJson()}`;
         const exists = entries.some(e => e.date === payload.entry.date);
         if (exists && !payload.replace) throw new Error(`A record already exists for ${payload.entry.date}.`);
         entries = [payload.entry, ...entries.filter(e => e.date !== payload.entry.date)].sort((a,b) => b.date.localeCompare(a.date));
+        if (payload.skillRecords.length) {
+          skillRecords = [...payload.skillRecords, ...skillRecords].sort((a,b) => b.date.localeCompare(a.date));
+          write(keys.skills, skillRecords);
+        }
         history = [{ id: crypto.randomUUID(), imported_at: new Date().toISOString(), date: payload.entry.date, raw_json: raw, replaced_existing: exists && payload.replace }, ...history];
         write(keys.entries, entries);
         write(keys.history, history);
         selectedDate = payload.entry.date;
-        box.innerHTML = `<div class="status success" style="margin-top:.8rem">${exists ? "Replaced" : "Imported"} ${payload.entry.date}.</div>`;
+        box.innerHTML = `<div class="status success" style="margin-top:.8rem">${exists ? "Replaced" : "Imported"} ${payload.entry.date}.${payload.skillRecords.length ? ` Added ${payload.skillRecords.length} skill record${payload.skillRecords.length === 1 ? "" : "s"}.` : ""}</div>`;
         document.getElementById("dayCount").textContent = `${entries.length} days`;
       } catch (err) {
         box.innerHTML = `<div class="status warn" style="margin-top:.8rem">${err.message || "Import failed."}</div>`;
@@ -606,12 +727,147 @@ ${sampleJson()}`;
           return `<article class="card"><div class="row"><div><h3>${e.date}</h3><p class="section-copy">${e.notes || "No notes"}</p></div><b>${habitScore(e)}%</b></div><div class="statgrid">${stat("Calories", e.nutrition.tracked ? e.nutrition.calories : "untracked")}${stat("Protein", e.nutrition.protein_g)}${stat("Sleep score", e.sleep.score)}${stat("Workout", minutesLabel(workout))}${stat("Bible", `${e.bible.total_chapters || 0} ch`) }${stat("Mood", e.mood_1_10)}${stat("Energy", e.energy_1_10)}${stat("Screen", minutesLabel(e.screen_time.total_minutes))}</div><button class="btn ghost" style="margin-top:.85rem;width:100%" onclick="deleteEntry('${e.date}')">Delete this day</button></article>`;
         }).join("") || `<div class="card">No daily records yet. Add a quick log or paste a ChatGPT import.</div>`}</div>`;
     }
+    function bestSkillRecords() {
+      const best = {};
+      skillRecords.forEach((record) => {
+        if (record.value == null) return;
+        if (!best[record.skill] || record.value > best[record.skill].value) best[record.skill] = record;
+      });
+      return best;
+    }
+    function renderSkillOption(name) {
+      return `<option value="${name}">${name}</option>`;
+    }
+    function renderSkillBestCard(skill, record) {
+      const target = skillTargets[skill] || { unit: record?.unit || "sec", target: Math.max(record?.value || 1, 1), color: "blue" };
+      const progress = pct(record?.value, target.target);
+      const ringClass = target.color === "violet" ? "violet" : target.color === "coral" ? "coral" : "";
+      return `<article class="card ring-card">
+        <div class="ring ${ringClass}" style="--progress:${progress}%">${progress}%</div>
+        <div>
+          <h3>${skill}</h3>
+          <p class="section-copy">${record ? `${record.value} ${record.unit} on ${record.date}` : "No record yet"}</p>
+          <div class="skill-meta"><span>${record?.progression || "progression open"}</span><span>goal ${target.target} ${target.unit}</span></div>
+        </div>
+      </article>`;
+    }
+    function renderSkills() {
+      const best = bestSkillRecords();
+      const featured = Object.keys(skillTargets);
+      return `${section("Skills", "Calisthenics progress", "Log PRs whenever you break a record or unlock a new progression. This is separate from daily workout minutes.")}
+        <div class="ring-row">${featured.slice(0,4).map(skill => renderSkillBestCard(skill, best[skill])).join("")}</div>
+        <article class="card" style="margin-top:1rem">
+          <strong>Add skill record</strong>
+          <div class="grid two" style="margin-top:.85rem">
+            <label class="field"><span>Date</span><input id="skill_date" type="date" value="${todayKey()}"></label>
+            <label class="field"><span>Skill</span><select id="skill_name">${featured.map(renderSkillOption).join("")}<option value="Other">Other</option></select></label>
+            ${inputField("Value","skill_value",null,"0.1")}
+            <label class="field"><span>Unit</span><select id="skill_unit"><option>sec</option><option>reps</option><option>level</option><option>attempts</option></select></label>
+            ${inputField("Quality 1-10","skill_quality",null,"1")}
+            <label class="field"><span>Progression</span><input id="skill_progression" type="text" placeholder="wall hold, tuck planche, freestanding, etc."></label>
+          </div>
+          <label class="field" style="margin-top:.75rem"><span>Notes</span><textarea id="skill_notes" placeholder="What changed, form cue, setup, video note, or next focus"></textarea></label>
+          <button class="btn dark" style="margin-top:.9rem;width:100%" onclick="saveSkillRecord()">Save skill PR</button><div id="skillStatus"></div>
+        </article>
+        <div class="skill-list">${skillRecords.map((record, index) => renderSkillRecord(record, index)).join("") || `<article class="card" style="margin-top:1rem">No skill records yet. Add your first PR above.</article>`}</div>`;
+    }
+    function renderSkillRecord(record, index) {
+      const target = skillTargets[record.skill] || { color: "blue" };
+      const cardClass = target.color === "violet" ? "violet" : target.color === "coral" ? "coral" : "";
+      return `<article class="card skill-card ${cardClass}">
+        <div class="row"><div><h3>${record.skill}</h3><p class="section-copy">${record.date}${record.progression ? ` - ${record.progression}` : ""}</p></div><b>${record.value ?? "-"} ${record.unit}</b></div>
+        <div class="skill-meta"><span>quality ${record.quality_1_10 ?? "-"}/10</span><span>${record.notes || "No notes"}</span></div>
+        <button class="btn ghost" style="margin-top:.85rem;width:100%" onclick="deleteSkillRecord(${index})">Delete record</button>
+      </article>`;
+    }
+    function saveSkillRecord() {
+      const chosen = str("skill_name");
+      const skill = chosen === "Other" ? (prompt("Skill name?") || "Other") : chosen;
+      const record = ensureSkillRecord({
+        date: str("skill_date"),
+        skill,
+        value: val("skill_value"),
+        unit: str("skill_unit"),
+        progression: str("skill_progression"),
+        quality_1_10: val("skill_quality"),
+        notes: str("skill_notes")
+      });
+      if (record.value == null) {
+        document.getElementById("skillStatus").innerHTML = `<div class="status warn" style="margin-top:.8rem">Add a value before saving.</div>`;
+        return;
+      }
+      skillRecords = [record, ...skillRecords].sort((a,b) => b.date.localeCompare(a.date));
+      write(keys.skills, skillRecords);
+      render();
+    }
+    function deleteSkillRecord(index) {
+      const record = skillRecords[index];
+      if (!record || !confirm(`Delete ${record.skill} record from ${record.date}?`)) return;
+      skillRecords.splice(index, 1);
+      write(keys.skills, skillRecords);
+      render();
+    }
+    function renderReading() {
+      const now = todayKey();
+      const yearPrefix = now.slice(0, 4);
+      const monthPrefix = now.slice(0, 7);
+      const monthEntries = entries.filter(e => e.date.startsWith(monthPrefix));
+      const yearEntries = entries.filter(e => e.date.startsWith(yearPrefix));
+      const allBible = bibleCoverage(entries);
+      const monthBible = bibleCoverage(monthEntries);
+      const yearBible = bibleCoverage(yearEntries);
+      const readingAll = bookHistory("reading_detail");
+      const readingMonth = readingAll.filter(item => item.date.startsWith(monthPrefix));
+      const readingBooks = [...new Set(readingAll.map(item => item.book))];
+      const readingMonthBooks = [...new Set(readingMonth.map(item => item.book))];
+      const bibleRows = Object.entries(allBible.byBook)
+        .sort((a,b) => b[1] - a[1])
+        .map(([book, count]) => {
+          const total = bibleChapterCounts[book] || count;
+          return `<div class="timeline-row"><span>${book}</span><div class="bar violet"><span style="width:${pct(count, total)}%"></span></div><b>${count}/${total}</b></div>`;
+        }).join("");
+      return `${section("Reading", "Bible and book history", "Track what you read, what chapters you covered, and how your month or year is building.")}
+        <div class="grid metrics" style="margin-top:1rem">
+          ${metric("Bible total", allBible.read.size, "chapters", bibleTotalChapters, "BIB")}
+          ${metric("Bible progress", allBible.percent, "%", 100, "ALL")}
+          ${metric("This year", yearBible.percent, "% Bible", 100, "YR")}
+          ${metric("Books read", readingBooks.length, "books", null, "RD")}
+        </div>
+        <article class="card" style="margin-top:.85rem">
+          <strong>This month</strong>
+          <div class="statgrid">
+            ${stat("Bible books", Object.keys(monthBible.byBook).join(", ") || "-")}
+            ${stat("Bible chapters", monthBible.read.size)}
+            ${stat("Other books", readingMonthBooks.join(", ") || "-")}
+            ${stat("Reading pages", sum(readingMonth.map(item => item.pages)))}
+          </div>
+        </article>
+        <article class="card" style="margin-top:.85rem">
+          <strong>Bible coverage by book</strong>
+          <div class="timeline">${bibleRows || "<p class='section-copy' style='margin-top:.6rem'>No Bible chapters logged yet.</p>"}</div>
+          <div class="statgrid">${stat("Completed books", allBible.completeBooks.join(", ") || "-")}${stat("Chapters this year", yearBible.read.size)}${stat("Chapters this month", monthBible.read.size)}${stat("Bible total", `${allBible.read.size}/${bibleTotalChapters}`)}</div>
+        </article>
+        <article class="card" style="margin-top:.85rem">
+          <strong>Full book history</strong>
+          <div class="ledger" style="margin-top:.75rem">${readingAll.map(item => `<div class="stat"><div class="row"><b>${item.book}</b><small>${item.date}</small></div><p class="section-copy">${item.pages ? `${item.pages} pages` : ""}${item.chapters.length ? `${item.pages ? " - " : ""}chapters ${item.chapters.join(", ")}` : ""}${item.notes ? ` - ${item.notes}` : ""}</p></div>`).join("") || "<p class='section-copy'>No non-Bible book sessions logged yet.</p>"}</div>
+        </article>`;
+    }
+    function renderSkillHighlights(limit = 4) {
+      const best = bestSkillRecords();
+      const rows = Object.entries(best)
+        .sort((a,b) => (b[1].date || "").localeCompare(a[1].date || ""))
+        .slice(0, limit);
+      return rows.map(([skill, record]) => stat(skill, `${record.value} ${record.unit} (${record.date})`)).join("") || stat("Skill PRs", "No records yet");
+    }
     function setPeriod(days) { periodDays = days; render(); }
     function barRow(label, value, max, color = "") {
       return `<div class="timeline-row"><span>${label}</span><div class="bar ${color}"><span style="width:${max ? Math.min(100, Math.round(value / max * 100)) : 0}%"></span></div><b>${minutesLabel(value)}</b></div>`;
     }
     function renderInsights() {
       const data = aggregate(periodEntries());
+      const biblePeriod = bibleCoverage(periodEntries());
+      const bibleYear = bibleCoverage(entries.filter(e => e.date.startsWith(todayKey().slice(0, 4))));
+      const periodReadingBooks = [...new Set(periodEntries().flatMap(e => e.reading_detail.books))];
       const maxWorkout = Math.max(1, ...Object.values(data.workoutTypes));
       const periodLabel = periodDays === 365 ? "year" : periodDays === 30 ? "month" : "week";
       const workoutEnergy = compareAvg(periodEntries(), e => sum(e.workouts.map(w => w.minutes)) > 0, e => e.energy_1_10);
@@ -639,7 +895,11 @@ ${sampleJson()}`;
         </div>
         <article class="card" style="margin-top:.85rem">
           <strong>Bible and reading</strong>
-          <div class="statgrid">${stat("Bible books", data.bibleBooks.join(", ") || "-")}${stat("Bible chapters", data.bibleChapters)}${stat("Bible pages", data.biblePages)}${stat("Other books", data.readingBooks.join(", ") || "-")}${stat("Reading pages", data.readingPages)}${stat("Logged days", `${data.loggedDays}/${periodDays}`)}</div>
+          <div class="statgrid">${stat("Bible books", Object.keys(biblePeriod.byBook).join(", ") || "-")}${stat("Bible chapters", biblePeriod.read.size)}${stat("Bible this year", `${bibleYear.percent}%`)}${stat("Other books", periodReadingBooks.join(", ") || "-")}${stat("Reading pages", data.readingPages)}${stat("Logged days", `${data.loggedDays}/${periodDays}`)}</div>
+        </article>
+        <article class="card" style="margin-top:.85rem">
+          <strong>Calisthenics PRs</strong>
+          <div class="statgrid">${renderSkillHighlights()}</div>
         </article>
         <article class="card" style="margin-top:.85rem">
           <strong>Possible patterns</strong>
@@ -718,8 +978,9 @@ ${sampleJson()}`;
         entries = data.entries.map(ensureEntry).sort((a,b) => b.date.localeCompare(a.date));
         settings = { ...defaultSettings, ...(data.settings || {}) };
         history = Array.isArray(data.history) ? data.history : [];
-        write(keys.entries, entries); write(keys.settings, settings); write(keys.history, history);
-        status.innerHTML = `<div class="status success" style="margin-top:.8rem">Backup restored. ${entries.length} days loaded.</div>`;
+        skillRecords = Array.isArray(data.skillRecords) ? data.skillRecords.map(ensureSkillRecord).sort((a,b) => b.date.localeCompare(a.date)) : [];
+        write(keys.entries, entries); write(keys.settings, settings); write(keys.history, history); write(keys.skills, skillRecords);
+        status.innerHTML = `<div class="status success" style="margin-top:.8rem">Backup restored. ${entries.length} days and ${skillRecords.length} skill records loaded.</div>`;
         setTimeout(render, 600);
       } catch (err) {
         status.innerHTML = `<div class="status warn" style="margin-top:.8rem">${err.message || "Could not restore that backup."}</div>`;
@@ -727,8 +988,8 @@ ${sampleJson()}`;
     }
     function clearAllData() {
       if (prompt("Type DELETE to clear all tracker data stored on this device.") !== "DELETE") return;
-      entries = []; settings = { ...defaultSettings }; history = [];
-      localStorage.removeItem(keys.entries); localStorage.removeItem(keys.settings); localStorage.removeItem(keys.history);
+      entries = []; settings = { ...defaultSettings }; history = []; skillRecords = [];
+      localStorage.removeItem(keys.entries); localStorage.removeItem(keys.settings); localStorage.removeItem(keys.history); localStorage.removeItem(keys.skills);
       render();
     }
     function renderNav() {
@@ -738,7 +999,7 @@ ${sampleJson()}`;
       document.getElementById("todayLabel").textContent = pretty(todayKey());
       document.getElementById("dayCount").textContent = `${entries.length} days`;
       renderNav();
-      const map = { today: renderToday, chat: renderChat, log: renderLog, import: renderImport, ledger: renderLedger, insights: renderInsights, share: renderShare, settings: renderSettings };
+      const map = { today: renderToday, chat: renderChat, log: renderLog, import: renderImport, reading: renderReading, skills: renderSkills, ledger: renderLedger, insights: renderInsights, share: renderShare, settings: renderSettings };
       document.getElementById("screen").innerHTML = map[active]();
     }
     render();
