@@ -50,33 +50,12 @@
     .brand { display: flex; align-items: center; gap: .75rem; min-width: 0; }
     .brandmark {
       width: 2.65rem; height: 2.65rem; border-radius: .72rem;
-      background: linear-gradient(145deg, #ffffff, #edf3ff);
+      background: #fff;
       display: grid; place-items: center; box-shadow: 0 10px 24px rgba(47,111,237,.16);
       position: relative; overflow: hidden; flex: 0 0 auto;
       border: 1px solid rgba(229,229,234,.9);
     }
-    .brandmark:before {
-      content: ""; position: absolute; inset: .38rem; border-radius: 999px;
-      background: conic-gradient(from 138deg, #23d6a4 0 48%, transparent 48% 63%, #2f6fed 63% 88%, transparent 88% 100%);
-      -webkit-mask: radial-gradient(circle, transparent 54%, #000 56%);
-      mask: radial-gradient(circle, transparent 54%, #000 56%);
-    }
-    .brandmark:after {
-      content: ""; position: absolute; width: .22rem; height: .22rem; border-radius: 999px; background: #24cfa1;
-      top: .6rem; right: .86rem;
-      box-shadow: .36rem .28rem 0 #28cba6, .52rem .68rem 0 #2fc2ad, .48rem 1.08rem 0 #34b8ba;
-    }
-    .brandheart {
-      width: 1.24rem; height: 1.08rem; position: relative; transform: rotate(-45deg) translate(.02rem,.04rem);
-      background: linear-gradient(135deg, #22a8f4, #25d59a); border-radius: .22rem;
-    }
-    .brandheart:before, .brandheart:after { content: ""; position: absolute; width: 1.08rem; height: 1.08rem; border-radius: 999px; background: inherit; }
-    .brandheart:before { top: -.54rem; left: 0; }
-    .brandheart:after { left: .54rem; top: 0; }
-    .brandcheck {
-      position: absolute; width: 1.12rem; height: .62rem; border-left: .18rem solid white; border-bottom: .18rem solid white;
-      transform: rotate(-45deg) translate(.04rem,.06rem); border-radius: .08rem; z-index: 2;
-    }
+    .brandmark img { width: 100%; height: 100%; object-fit: cover; display: block; }
     .eyebrow { margin: 0; color: var(--blue); font-size: .72rem; font-weight: 850; letter-spacing: .13em; text-transform: uppercase; }
     h1, h2, h3, p { margin-top: 0; }
     h1 { margin-bottom: 0; font-size: 1.28rem; line-height: 1.05; }
@@ -149,12 +128,19 @@
       padding: .5rem .45rem max(.55rem, env(safe-area-inset-bottom));
       box-shadow: 0 -12px 40px rgba(30,40,34,.1);
     }
-    .nav-inner { max-width: 1040px; margin: 0 auto; display: grid; grid-template-columns: repeat(10, 1fr); gap: .25rem; }
+    .nav-inner { max-width: 1040px; margin: 0 auto; display: grid; grid-template-columns: repeat(10, 1fr); gap: .32rem; }
     .nav button {
-      height: 3.35rem; border: 0; border-radius: .48rem; background: transparent; color: #69736c;
-      font-size: .58rem; font-weight: 850;
+      height: 3.35rem; border: 0; border-radius: .72rem; background: transparent; color: #717785;
+      display: grid; place-items: center; padding: .25rem .1rem;
     }
-    .nav button.active { background: #111318; color: white; }
+    .nav .nav-icon {
+      width: 1.72rem; height: 1.72rem; border-radius: 999px; display: grid; place-items: center;
+      color: currentColor;
+    }
+    .nav .nav-icon svg { width: 1.32rem; height: 1.32rem; stroke: currentColor; fill: none; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
+    .nav .nav-icon .fill { fill: currentColor; stroke: none; }
+    .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; border: 0; }
+    .nav button.active { background: var(--blue); color: white; box-shadow: 0 8px 22px rgba(47,111,237,.22); }
     .share-wrap { display: flex; justify-content: center; }
     .share {
       width: min(100%, 390px); aspect-ratio: 9 / 16; border-radius: .75rem;
@@ -217,7 +203,7 @@
   <div class="app">
     <header>
       <div class="brand">
-        <div class="brandmark" aria-hidden="true"><span class="brandheart"></span><span class="brandcheck"></span></div>
+        <div class="brandmark" aria-hidden="true"><img src="./icons/reset-logo.png" alt=""></div>
         <div>
           <p class="eyebrow">Reset Tracker</p>
           <h1>Life dashboard</h1>
@@ -252,9 +238,21 @@
       time_zone: browserTimeZone
     };
     const tabs = [
-      ["today", "Today"], ["chat", "ChatGPT"], ["log", "Log"], ["import", "Import"],
-      ["reading", "Reading"], ["skills", "Skills"], ["ledger", "Ledger"], ["insights", "Insights"], ["share", "Share"], ["settings", "Goals"]
+      ["today", "Today"], ["insights", "Insights"], ["reading", "Reading"], ["skills", "Skills"], ["ledger", "Ledger"],
+      ["share", "Share"], ["import", "Import"], ["settings", "Goals"], ["chat", "ChatGPT"], ["log", "Log"]
     ];
+    const tabIcons = {
+      today: `<svg viewBox="0 0 24 24"><path d="M12 3a9 9 0 1 0 9 9"/><path d="M12 7a5 5 0 1 0 5 5"/><path d="m9.8 12 1.5 1.5 3.2-3.5"/></svg>`,
+      insights: `<svg viewBox="0 0 24 24"><path d="M4 16c3-8 6 4 9-4s5 0 7-5"/><path d="M4 20h16"/></svg>`,
+      reading: `<svg viewBox="0 0 24 24"><path d="M5 5.5c2.8-.8 4.8-.4 7 1.3 2.2-1.7 4.2-2.1 7-1.3v13c-2.8-.8-4.8-.4-7 1.3-2.2-1.7-4.2-2.1-7-1.3z"/><path d="M12 6.8v13"/></svg>`,
+      skills: `<svg viewBox="0 0 24 24"><path d="M12 4 21 19H3z"/><path d="M12 9v5"/><path d="M9.7 14h4.6"/></svg>`,
+      ledger: `<svg viewBox="0 0 24 24"><path d="M7 5h10"/><path d="M7 10h10"/><path d="M7 15h7"/><path d="M5 3h14v18H5z"/></svg>`,
+      share: `<svg viewBox="0 0 24 24"><path d="M7 17 17 7"/><path d="M10 7h7v7"/><path d="M5 12v7h7"/></svg>`,
+      import: `<svg viewBox="0 0 24 24"><path d="M12 4v11"/><path d="m7.5 10.5 4.5 4.5 4.5-4.5"/><path d="M5 20h14"/></svg>`,
+      settings: `<svg viewBox="0 0 24 24"><path d="M12 3 20 8v8l-8 5-8-5V8z"/><path d="M9 12h6"/><path d="M12 9v6"/></svg>`,
+      chat: `<svg viewBox="0 0 24 24"><path d="M5 6.5A3.5 3.5 0 0 1 8.5 3h7A3.5 3.5 0 0 1 19 6.5v4A3.5 3.5 0 0 1 15.5 14H12l-4 4v-4A3.5 3.5 0 0 1 5 10.5z"/><path d="M9 8h6"/><path d="M9 11h4"/></svg>`,
+      log: `<svg viewBox="0 0 24 24"><path d="M12 5v14"/><path d="M5 12h14"/><circle cx="12" cy="12" r="8"/></svg>`
+    };
     let settings = { ...defaultSettings, ...read(keys.settings, {}) };
     let entries = read(keys.entries, []).map(ensureEntry).sort((a,b) => b.date.localeCompare(a.date));
     let history = read(keys.history, []);
@@ -453,6 +451,14 @@
       return nums.length ? Math.round(nums.reduce((a,b) => a+b, 0) / nums.length * 10) / 10 : null;
     }
     function pct(value, goal) { return value == null || goal <= 0 ? 0 : Math.max(0, Math.min(100, Math.round(value / goal * 100))); }
+    function calorieStatus(value, goal) {
+      if (value == null || goal <= 0) return { pct: 0, label: "-", tone: "var(--muted)", text: "-" };
+      const diff = Math.round(value - goal);
+      const ratio = value / goal;
+      if (diff <= 0) return { pct: Math.round(Math.max(0, ratio) * 100), label: diff === 0 ? "on" : `${Math.abs(diff)} under`, tone: "var(--blue)", text: `${Math.round(ratio * 100)}%` };
+      const overPct = Math.round(Math.min(100, diff / goal * 100));
+      return { pct: Math.max(6, overPct), label: `${diff} over`, tone: "var(--coral)", text: `+${diff}` };
+    }
     function current(date = todayKey()) { return ensureEntry(entries.find(e => e.date === date) || blank(date)); }
     function shiftDate(date, days) {
       const base = new Date(`${date}T12:00:00`);
@@ -515,6 +521,11 @@
     function stat(label, value) { return `<div class="stat"><label>${label}</label><b>${value ?? "-"}</b></div>`; }
     function progress(label, value, goal, unit, color = "") {
       return `<article class="card"><div class="row"><strong>${label}</strong><small>${value ?? "-"} / ${goal} ${unit}</small></div><div class="bar ${color}"><span style="width:${pct(value, goal)}%"></span></div></article>`;
+    }
+    function calorieProgress(value, goal) {
+      const status = calorieStatus(value, goal);
+      const label = value == null ? "-" : value;
+      return `<article class="card"><div class="row"><strong>Calories</strong><small>${label} / ${goal} kcal - ${status.label}</small></div><div class="bar"><span style="width:${status.pct}%;background:${status.tone}"></span></div></article>`;
     }
     function inputField(label, id, value, step = "1", type = "number") {
       return `<label class="field"><span>${label}</span><input id="${id}" type="${type}" ${type === "number" ? 'inputmode="decimal"' : ""} step="${step}" value="${value ?? ""}"></label>`;
@@ -600,8 +611,10 @@ ${sampleJson()}`;
       const workoutTotal = sum(e.workouts.map(w => w.minutes));
       const workoutTypes = [...new Set(e.workouts.map(w => w.type).filter(Boolean))].join(", ");
       const screenTotal = e.screen_time.total_minutes ?? (((e.screen_time.useful_minutes || 0) + (e.screen_time.entertainment_minutes || 0)) || null);
+      const calories = e.nutrition.tracked ? e.nutrition.calories : null;
+      const fuel = calorieStatus(calories, settings.calorie_goal);
       const cards = [
-        ["Calories", e.nutrition.tracked ? e.nutrition.calories : null, "kcal", settings.calorie_goal, "CAL"],
+        ["Calories", calories, fuel.label === "-" ? "kcal" : `kcal - ${fuel.label}`, settings.calorie_goal, "CAL"],
         ["Protein", e.nutrition.protein_g, "g", settings.protein_goal, "PRO"],
         ["Sleep score", e.sleep.score, "/100", 100, "SLP"],
         ["Sleep", e.sleep_hours, "h", settings.sleep_goal, "HRS"],
@@ -617,7 +630,7 @@ ${sampleJson()}`;
       const snapshot = [
         ["Move", workoutTotal || 0, 45, "var(--leaf)", workoutTotal ? `${workoutTotal}m` : "-"],
         ["Sleep", e.sleep.score ?? e.sleep_hours, e.sleep.score != null ? 100 : settings.sleep_goal, "var(--blue)", e.sleep.score != null ? `${e.sleep.score}` : (e.sleep_hours ?? "-")],
-        ["Fuel", e.nutrition.tracked ? e.nutrition.calories : null, settings.calorie_goal, "var(--coral)", e.nutrition.tracked ? `${Math.round(pct(e.nutrition.calories, settings.calorie_goal))}%` : "-"],
+        ["Fuel", fuel.pct, 100, fuel.tone, calories == null ? "-" : fuel.text],
         ["Mind", e.mood_1_10, 10, "var(--violet)", e.mood_1_10 ?? "-"]
       ];
       return `${section("Today", isToday ? "Current signal" : "Daily signal", hasSaved ? e.date : `${e.date} - no saved record`)}
@@ -640,7 +653,7 @@ ${sampleJson()}`;
         </article>
         <div class="grid metrics" style="margin-top:1rem">${cards.map(c => metric(...c)).join("")}</div>
         <div class="grid two" style="margin-top:.85rem">
-          ${progress("Calories", e.nutrition.tracked ? e.nutrition.calories : null, settings.calorie_goal, "kcal")}
+          ${calorieProgress(calories, settings.calorie_goal)}
           ${progress("Protein", e.nutrition.protein_g, settings.protein_goal, "g")}
           ${progress("Steps", e.steps, settings.step_goal, "steps", "coral")}
           ${progress("Sleep", e.sleep_hours, settings.sleep_goal, "h", "gold")}
@@ -1054,7 +1067,7 @@ ${sampleJson()}`;
       render();
     }
     function renderNav() {
-      document.getElementById("nav").innerHTML = tabs.map(([id, label]) => `<button class="${active === id ? "active" : ""}" onclick="active='${id}';render()">${label}</button>`).join("");
+      document.getElementById("nav").innerHTML = tabs.map(([id, label]) => `<button title="${label}" class="${active === id ? "active" : ""}" onclick="active='${id}';render()" aria-label="${label}"><span class="nav-icon">${tabIcons[id] || ""}</span><span class="sr-only">${label}</span></button>`).join("");
     }
     function render() {
       document.getElementById("todayLabel").textContent = pretty(todayKey());
