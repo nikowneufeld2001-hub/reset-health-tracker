@@ -1,28 +1,22 @@
-# Reset Health Tracker PWA
+# Reset Life Tracker PWA
 
-This folder is ready to host as a simple Progressive Web App.
+Upload the contents of this folder to the root of the GitHub Pages repository.
 
-## Files
+Important files:
 
-- `index.html` is the app.
-- `manifest.webmanifest` makes it installable.
-- `sw.js` caches the app shell after it is opened from a hosted URL.
-- `icons/` contains the Home Screen icons.
-- `.nojekyll` tells GitHub Pages to serve files as-is.
-- `README.md` includes the copyright notice.
+- `index.html`
+- `health-tracker.html`
+- `manifest.webmanifest`
+- `sw.js`
+- `.nojekyll`
+- `icons/`
 
-## iPhone Install
+After upload, open the GitHub Pages URL with a cache-busting query such as:
 
-1. Host the `outputs` folder on an HTTPS static host.
-2. Open the hosted URL in Safari on your iPhone.
-3. Tap Share.
-4. Tap Add to Home Screen.
-5. Open Reset from the Home Screen icon.
+```text
+https://nikowneufeld2001-hub.github.io/reset-health-tracker/?v=life1
+```
 
-## Good Hosting Options
+Then refresh Safari and reopen the Home Screen app.
 
-- Netlify Drop: drag the `outputs` folder into Netlify Drop.
-- Vercel static project: deploy the folder as static output.
-- GitHub Pages: publish these files from a repo.
-
-The AI photo/food tracker will need a backend API route later so your OpenAI API key is not exposed in browser code.
+Your existing app data can carry forward because this version uses the same localStorage keys and can normalize older entries.

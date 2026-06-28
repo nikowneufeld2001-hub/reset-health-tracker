@@ -5,137 +5,151 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <meta name="theme-color" content="#3e7f5d" />
-  <meta name="description" content="A personal local-first health, nutrition, and habit tracker." />
+  <meta name="description" content="A personal local-first health, nutrition, habits, and life dashboard." />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="default" />
   <meta name="apple-mobile-web-app-title" content="Reset" />
   <link rel="manifest" href="./manifest.webmanifest" />
   <link rel="apple-touch-icon" href="./icons/icon-180.png" />
   <link rel="icon" href="./icons/icon-192.png" />
-  <title>Reset Health Tracker</title>
+  <title>Reset Life Tracker</title>
   <style>
     :root {
       --ink: #17201d;
-      --muted: #657068;
+      --muted: #647069;
       --mist: #f5f7f3;
       --leaf: #3e7f5d;
+      --leaf-soft: #e7f0e8;
       --coral: #df6f52;
       --gold: #d8a340;
-      --line: #e1e7df;
-      --white: rgba(255,255,255,.92);
+      --line: #dfe7df;
+      --white: rgba(255,255,255,.93);
       --shadow: 0 18px 60px rgba(36,45,66,.10);
     }
     * { box-sizing: border-box; }
     body {
       margin: 0;
       min-height: 100vh;
-      background: radial-gradient(circle at top left, rgba(62,127,93,.14), transparent 34rem), linear-gradient(180deg, #f5f7f3, #eef2ed);
+      background:
+        radial-gradient(circle at 10% 0%, rgba(62,127,93,.18), transparent 34rem),
+        radial-gradient(circle at 95% 18%, rgba(216,163,64,.14), transparent 28rem),
+        linear-gradient(180deg, #f6f8f3, #eef3ef);
       color: var(--ink);
       font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
     }
-    button, input, textarea { font: inherit; }
+    button, input, textarea, select { font: inherit; }
     button { cursor: pointer; }
-    .app { max-width: 980px; margin: 0 auto; padding-bottom: 6.5rem; }
+    .app { max-width: 1040px; margin: 0 auto; padding-bottom: 6.7rem; }
     header {
       position: sticky; top: 0; z-index: 3;
       display: flex; justify-content: space-between; align-items: center; gap: 1rem;
-      padding: .8rem 1rem; background: rgba(245,247,243,.88); backdrop-filter: blur(18px);
+      padding: .85rem 1rem; background: rgba(245,247,243,.9); backdrop-filter: blur(18px);
       border-bottom: 1px solid rgba(255,255,255,.85);
     }
-    .eyebrow { margin: 0; color: var(--leaf); font-size: .72rem; font-weight: 800; letter-spacing: .16em; text-transform: uppercase; }
+    .brand { display: flex; align-items: center; gap: .75rem; min-width: 0; }
+    .brandmark {
+      width: 2.65rem; height: 2.65rem; border-radius: .8rem;
+      background: linear-gradient(145deg, var(--leaf), #285a43);
+      display: grid; place-items: center; box-shadow: 0 12px 28px rgba(62,127,93,.25);
+      position: relative; overflow: hidden; flex: 0 0 auto;
+    }
+    .brandmark:before { content: ""; width: 1.35rem; height: 1.35rem; border: .22rem solid #fff; border-radius: 999px; }
+    .brandmark:after { content: ""; position: absolute; width: .95rem; height: .95rem; border-radius: 999px 999px 999px 0; background: var(--gold); transform: translate(.55rem,.55rem) rotate(-18deg); }
+    .eyebrow { margin: 0; color: var(--leaf); font-size: .72rem; font-weight: 850; letter-spacing: .16em; text-transform: uppercase; }
     h1, h2, h3, p { margin-top: 0; }
-    h1 { margin-bottom: 0; font-size: 1.35rem; line-height: 1.1; }
-    h2 { margin-bottom: .2rem; font-size: 1.65rem; }
-    .date-pill { border-radius: 999px; background: white; padding: .45rem .8rem; text-align: right; box-shadow: 0 3px 12px rgba(0,0,0,.05); }
+    h1 { margin-bottom: 0; font-size: 1.28rem; line-height: 1.05; }
+    h2 { margin-bottom: .2rem; font-size: 1.65rem; line-height: 1.05; }
+    h3 { margin-bottom: .35rem; }
+    .date-pill { border-radius: 999px; background: white; padding: .45rem .8rem; text-align: right; box-shadow: 0 3px 14px rgba(0,0,0,.05); }
     .date-pill p { margin: 0; font-size: .78rem; color: var(--muted); }
     .date-pill strong { display: block; font-size: .9rem; }
     main { padding: 1.1rem 1rem; }
-    .section-copy { margin: 0; color: var(--muted); font-size: .92rem; }
+    .section-copy { margin: 0; color: var(--muted); font-size: .92rem; line-height: 1.42; }
     .grid { display: grid; gap: .75rem; }
     .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     .two { grid-template-columns: 1fr; }
-    .card { background: var(--white); border: 1px solid rgba(255,255,255,.9); border-radius: .55rem; padding: 1rem; box-shadow: 0 4px 18px rgba(28,38,31,.05); }
-    .metric { min-height: 7rem; }
+    .three { grid-template-columns: 1fr; }
+    .card { background: var(--white); border: 1px solid rgba(255,255,255,.9); border-radius: .65rem; padding: 1rem; box-shadow: 0 4px 18px rgba(28,38,31,.05); }
+    .hero-card { background: linear-gradient(135deg, #ffffff, #edf5ec); border: 1px solid white; }
+    .metric { min-height: 7.1rem; }
     .metric-top, .row { display: flex; align-items: center; justify-content: space-between; gap: .7rem; }
-    .metric-icon {
-      display: inline-grid; place-items: center; width: 1.7rem; height: 1.7rem;
-      border-radius: 999px; background: #edf3ec; color: var(--leaf);
-      font-size: .72rem; font-weight: 900; letter-spacing: 0;
-    }
-    .metric label, .stat label { color: var(--muted); font-size: .78rem; font-weight: 700; }
-    .metric b { display: block; margin-top: .75rem; font-size: 1.75rem; line-height: 1; }
+    .metric label, .stat label { color: var(--muted); font-size: .78rem; font-weight: 750; }
+    .metric b { display: block; margin-top: .7rem; font-size: 1.7rem; line-height: 1; overflow-wrap: anywhere; }
     .metric small, .stat small { color: var(--muted); }
-    .bar { height: .5rem; margin-top: .8rem; overflow: hidden; border-radius: 99px; background: #edf1eb; }
+    .metric-icon {
+      display: inline-grid; place-items: center; min-width: 1.8rem; height: 1.8rem; padding: 0 .3rem;
+      border-radius: 999px; background: var(--leaf-soft); color: var(--leaf);
+      font-size: .68rem; font-weight: 950; letter-spacing: 0;
+    }
+    .bar { height: .56rem; margin-top: .8rem; overflow: hidden; border-radius: 99px; background: #edf1eb; }
     .bar span { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--leaf); }
-    .progress .bar span { background: var(--coral); }
-    .field { display: block; background: white; border-radius: .55rem; padding: .85rem; box-shadow: 0 4px 18px rgba(28,38,31,.05); }
-    .field span { display: block; margin-bottom: .45rem; font-size: .9rem; font-weight: 750; }
-    input, textarea {
-      width: 100%; border: 1px solid var(--line); border-radius: .45rem; outline: none;
+    .bar.coral span { background: var(--coral); }
+    .bar.gold span { background: var(--gold); }
+    .field { display: block; background: white; border-radius: .6rem; padding: .85rem; box-shadow: 0 4px 18px rgba(28,38,31,.05); }
+    .field span { display: block; margin-bottom: .45rem; font-size: .9rem; font-weight: 780; }
+    input, textarea, select {
+      width: 100%; border: 1px solid var(--line); border-radius: .5rem; outline: none;
       background: white; color: var(--ink);
     }
-    input { height: 3rem; padding: 0 .8rem; font-size: 1.1rem; font-weight: 700; }
+    input, select { min-height: 3rem; padding: 0 .8rem; font-size: 1.03rem; font-weight: 720; }
     textarea { min-height: 8rem; padding: .8rem; resize: vertical; }
-    input:focus, textarea:focus { box-shadow: 0 0 0 4px rgba(62,127,93,.18); border-color: var(--leaf); }
+    input:focus, textarea:focus, select:focus { box-shadow: 0 0 0 4px rgba(62,127,93,.18); border-color: var(--leaf); }
     .jsonbox { min-height: 25rem; background: #101815; color: #e7fff2; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .78rem; line-height: 1.55; }
     .backupbox { min-height: 10rem; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; font-size: .78rem; line-height: 1.45; }
     .btn {
-      min-height: 3.35rem; border: 0; border-radius: .55rem; padding: 0 1rem;
+      min-height: 3.15rem; border: 0; border-radius: .6rem; padding: 0 1rem;
       background: var(--leaf); color: white; font-weight: 850; box-shadow: var(--shadow);
     }
     .btn.dark { background: var(--ink); }
-    .btn.ghost {
-      background: transparent; color: #8a3b25; box-shadow: none; border: 1px solid #efc7b8;
-    }
-    .status { border-radius: .55rem; padding: .85rem 1rem; font-size: .9rem; font-weight: 750; }
+    .btn.ghost { background: transparent; color: #8a3b25; box-shadow: none; border: 1px solid #efc7b8; }
+    .btn.soft { background: #edf3ec; color: var(--leaf); box-shadow: none; }
+    .status { border-radius: .6rem; padding: .85rem 1rem; font-size: .9rem; font-weight: 760; }
     .success { background: #eaf8ef; color: #1e6c3e; }
     .warn { background: #fff5d9; color: #7a4b05; }
     .ledger { display: grid; gap: .75rem; }
     .statgrid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: .5rem; margin-top: .8rem; }
-    .stat { border-radius: .45rem; background: #f5f6f3; padding: .65rem; }
+    .stat { border-radius: .5rem; background: #f5f6f3; padding: .65rem; }
     .stat b { display: block; margin-top: .15rem; overflow-wrap: anywhere; }
+    .pillrow { display: flex; gap: .45rem; overflow-x: auto; padding-bottom: .15rem; }
+    .pill { flex: 0 0 auto; border-radius: 999px; background: #eef4ee; color: var(--leaf); padding: .42rem .7rem; font-size: .78rem; font-weight: 850; }
+    .timeline { display: grid; gap: .55rem; margin-top: .8rem; }
+    .timeline-row { display: grid; grid-template-columns: 7.2rem 1fr 3.5rem; align-items: center; gap: .55rem; font-size: .85rem; color: var(--muted); }
     .nav {
       position: fixed; left: 0; right: 0; bottom: 0; z-index: 4;
-      background: rgba(255,255,255,.93); backdrop-filter: blur(18px);
+      background: rgba(255,255,255,.94); backdrop-filter: blur(18px);
       border-top: 1px solid rgba(255,255,255,.9);
       padding: .5rem .45rem max(.55rem, env(safe-area-inset-bottom));
       box-shadow: 0 -12px 40px rgba(30,40,34,.1);
     }
-    .nav-inner { max-width: 980px; margin: 0 auto; display: grid; grid-template-columns: repeat(8, 1fr); gap: .25rem; }
+    .nav-inner { max-width: 1040px; margin: 0 auto; display: grid; grid-template-columns: repeat(8, 1fr); gap: .25rem; }
     .nav button {
-      height: 3.35rem; border: 0; border-radius: .45rem; background: transparent; color: #69736c;
-      font-size: .6rem; font-weight: 800;
+      height: 3.35rem; border: 0; border-radius: .48rem; background: transparent; color: #69736c;
+      font-size: .58rem; font-weight: 850;
     }
     .nav button.active { background: var(--leaf); color: white; }
     .share-wrap { display: flex; justify-content: center; }
     .share {
-      width: min(100%, 390px); aspect-ratio: 9 / 16; border-radius: .65rem;
+      width: min(100%, 390px); aspect-ratio: 9 / 16; border-radius: .75rem;
       background: #17201d; color: white; padding: 1.45rem; box-shadow: var(--shadow);
       display: flex; flex-direction: column; overflow: hidden;
     }
     .share h2 { margin: .25rem 0 0; color: white; font-size: 2rem; line-height: 1.05; }
-    .score { margin: 1.6rem 0; border-radius: .6rem; background: rgba(255,255,255,.1); padding: 1.15rem; }
-    .score b { display: block; font-size: 3.8rem; line-height: 1; }
-    .share-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .7rem; }
-    .share-stat { border-radius: .55rem; background: rgba(255,255,255,.1); padding: .75rem; }
+    .score { margin: 1.15rem 0; border-radius: .65rem; background: rgba(255,255,255,.1); padding: 1rem; }
+    .score b { display: block; font-size: 3.35rem; line-height: 1; }
+    .share-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: .55rem; }
+    .share-stat { border-radius: .55rem; background: rgba(255,255,255,.1); padding: .65rem; }
     .share-stat small { color: rgba(255,255,255,.64); }
-    .share-stat b { display: block; margin-top: .15rem; font-size: 1.1rem; }
-    .share-bottom { margin-top: auto; display: grid; gap: .95rem; }
-    .share-bottom p { margin: .2rem 0 0; font-size: 1.25rem; font-weight: 850; }
+    .share-stat b { display: block; margin-top: .15rem; font-size: 1rem; }
+    .share-bottom { margin-top: auto; display: grid; gap: .8rem; }
+    .share-bottom p { margin: .2rem 0 0; font-size: 1.12rem; font-weight: 850; }
     .footer { border-top: 1px solid rgba(255,255,255,.16); padding-top: .9rem; text-align: center; color: rgba(255,255,255,.7); font-size: .9rem; }
     .gold { color: var(--gold); }
-    .photo-preview {
-      display: none; width: 100%; max-height: 18rem; object-fit: cover;
-      border-radius: .55rem; border: 1px solid var(--line); margin-top: .75rem;
-    }
-    .source-list { margin: .8rem 0 0; padding-left: 1.1rem; color: var(--muted); font-size: .9rem; }
-    .source-list li { margin: .25rem 0; }
-    .hidden { display: none !important; }
     @media (min-width: 720px) {
-      h1 { font-size: 1.65rem; }
+      h1 { font-size: 1.58rem; }
       header, main { padding-left: 1.5rem; padding-right: 1.5rem; }
       .metrics { grid-template-columns: repeat(4, minmax(0,1fr)); }
       .two { grid-template-columns: repeat(2, minmax(0,1fr)); }
+      .three { grid-template-columns: repeat(3, minmax(0,1fr)); }
       .statgrid { grid-template-columns: repeat(4, minmax(0,1fr)); }
     }
   </style>
@@ -143,9 +157,12 @@
 <body>
   <div class="app">
     <header>
-      <div>
-        <p class="eyebrow">Reset Tracker</p>
-        <h1>Daily health board</h1>
+      <div class="brand">
+        <div class="brandmark" aria-hidden="true"></div>
+        <div>
+          <p class="eyebrow">Reset Tracker</p>
+          <h1>Life dashboard</h1>
+        </div>
       </div>
       <div class="date-pill">
         <p id="todayLabel"></p>
@@ -154,9 +171,7 @@
     </header>
     <main id="screen"></main>
   </div>
-  <nav class="nav">
-    <div class="nav-inner" id="nav"></div>
-  </nav>
+  <nav class="nav"><div class="nav-inner" id="nav"></div></nav>
 
   <script>
     const keys = {
@@ -164,38 +179,37 @@
       settings: "reset-static.settings",
       history: "reset-static.history"
     };
+    const browserTimeZone = Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Chicago";
     const defaultSettings = {
-      calorie_goal: 2200, protein_goal: 160, step_goal: 10000, water_goal: 2.5,
-      sleep_goal: 7.5, caffeine_limit: 400, creatine_goal: 5, goal_weight: 68
+      calorie_goal: 2200,
+      protein_goal: 160,
+      step_goal: 10000,
+      water_goal: 2.5,
+      sleep_goal: 7.5,
+      caffeine_limit: 400,
+      creatine_goal: 5,
+      goal_weight: 68,
+      time_zone: browserTimeZone
     };
     const tabs = [
-      ["today", "Today"], ["food", "ChatGPT"], ["log", "Log"], ["import", "Import"], ["ledger", "Ledger"],
-      ["trends", "Trends"], ["share", "Share"], ["settings", "Goals"]
+      ["today", "Today"], ["chat", "ChatGPT"], ["log", "Log"], ["import", "Import"],
+      ["ledger", "Ledger"], ["insights", "Insights"], ["share", "Share"], ["settings", "Goals"]
     ];
+    let settings = { ...defaultSettings, ...read(keys.settings, {}) };
+    let entries = read(keys.entries, []).map(ensureEntry).sort((a,b) => b.date.localeCompare(a.date));
+    let history = read(keys.history, []);
     let active = "today";
     let selectedDate = todayKey();
-    let entries = read(keys.entries, []).sort((a,b) => b.date.localeCompare(a.date));
-    let settings = { ...defaultSettings, ...read(keys.settings, {}) };
-    let history = read(keys.history, []);
+    let periodDays = 7;
 
     function read(key, fallback) {
       try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
     }
     function write(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
-    function backupPayload() {
-      return {
-        app: "reset-health-tracker",
-        version: 1,
-        exported_at: new Date().toISOString(),
-        entries,
-        settings,
-        history
-      };
-    }
-    function backupText() { return JSON.stringify(backupPayload(), null, 2); }
+    function appTimeZone() { return settings?.time_zone || browserTimeZone; }
     function todayKey(date = new Date()) {
       const parts = new Intl.DateTimeFormat("en-US", {
-        timeZone: "America/Ciudad_Juarez",
+        timeZone: appTimeZone(),
         year: "numeric",
         month: "2-digit",
         day: "2-digit"
@@ -203,10 +217,18 @@
       const value = Object.fromEntries(parts.map((part) => [part.type, part.value]));
       return `${value.year}-${value.month}-${value.day}`;
     }
-    function pretty(date) { return date ? new Date(date + "T00:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" }) : ""; }
+    function pretty(date) {
+      return date ? new Date(date + "T12:00:00").toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "";
+    }
     function blank(date = todayKey()) {
       return {
-        date, weight_kg: null, steps: null, water_liters: null, sleep_hours: null, mood_1_10: null, energy_1_10: null,
+        date,
+        weight_kg: null,
+        steps: null,
+        water_liters: null,
+        sleep_hours: null,
+        mood_1_10: null,
+        energy_1_10: null,
         nutrition: { tracked: false, confidence: "medium", calories: null, protein_g: null, carbs_g: null, fat_g: null, fiber_g: null, caffeine_mg: null, creatine_g: null },
         habits: {
           workout: { completed: false, value: null, unit: "minutes", status: "missing" },
@@ -216,90 +238,189 @@
           creatine: { completed: false, value: null, unit: "grams", status: "missing" }
         },
         data_quality: { nutrition_tracked: false, sleep_tracked: false, steps_tracked: false, weight_tracked: false, habits_tracked: "none", overall_confidence: "medium" },
+        sleep: { score: null, bedtime: "", wake_time: "", notes: "" },
+        bible: { sessions: [], total_pages: null, total_chapters: null, books: [] },
+        reading_detail: { sessions: [], total_pages: null, total_chapters: null, books: [] },
+        workouts: [],
+        screen_time: { useful_minutes: null, entertainment_minutes: null, total_minutes: null, notes: "" },
+        mood_detail: { stress_1_10: null, focus_1_10: null, motivation_1_10: null, tags: [], notes: "" },
         notes: ""
       };
     }
-    function current(date = todayKey()) { return entries.find(e => e.date === date) || blank(date); }
+    function ensureEntry(input) {
+      const base = blank(input?.date || todayKey());
+      const out = { ...base, ...(input || {}) };
+      out.nutrition = { ...base.nutrition, ...(input?.nutrition || {}) };
+      out.habits = {
+        workout: { ...base.habits.workout, ...(input?.habits?.workout || {}) },
+        reading: { ...base.habits.reading, ...(input?.habits?.reading || {}) },
+        meditation: { ...base.habits.meditation, ...(input?.habits?.meditation || {}) },
+        water: { ...base.habits.water, ...(input?.habits?.water || {}) },
+        creatine: { ...base.habits.creatine, ...(input?.habits?.creatine || {}) }
+      };
+      out.data_quality = { ...base.data_quality, ...(input?.data_quality || {}) };
+      out.sleep = { ...base.sleep, ...(input?.sleep || {}) };
+      out.bible = normalizeBookBlock(input?.bible || input?.bible_reading || base.bible);
+      out.reading_detail = normalizeBookBlock(input?.reading_detail || input?.reading_log || base.reading_detail);
+      out.workouts = Array.isArray(input?.workouts) ? input.workouts.map(normalizeWorkout).filter(Boolean) : [];
+      if (!out.workouts.length && out.habits.workout.value != null) {
+        out.workouts = [{ type: "unspecified", minutes: out.habits.workout.value, intensity: "", notes: "" }];
+      }
+      out.screen_time = { ...base.screen_time, ...(input?.screen_time || {}) };
+      out.mood_detail = { ...base.mood_detail, ...(input?.mood_detail || {}) };
+      out.mood_detail.tags = Array.isArray(out.mood_detail.tags) ? out.mood_detail.tags : [];
+      return out;
+    }
+    function normalizeBookBlock(value) {
+      const sessions = Array.isArray(value?.sessions) ? value.sessions : Array.isArray(value) ? value : [];
+      const normalized = sessions.map((s) => ({
+        book: s.book || s.book_title || "",
+        chapters: Array.isArray(s.chapters) ? s.chapters : s.chapter ? [s.chapter] : [],
+        pages: num(s.pages),
+        minutes: num(s.minutes),
+        notes: s.notes || ""
+      }));
+      const books = [...new Set([...(Array.isArray(value?.books) ? value.books : []), ...normalized.map(s => s.book).filter(Boolean)])];
+      return {
+        sessions: normalized,
+        total_pages: num(value?.total_pages) ?? sum(normalized.map(s => s.pages)),
+        total_chapters: num(value?.total_chapters) ?? normalized.reduce((total, s) => total + s.chapters.length, 0),
+        books
+      };
+    }
+    function normalizeWorkout(w) {
+      if (!w || typeof w !== "object") return null;
+      return {
+        type: (w.type || "unspecified").toString(),
+        minutes: num(w.minutes ?? w.value),
+        intensity: w.intensity || "",
+        notes: w.notes || ""
+      };
+    }
+    function num(v) { return typeof v === "number" && Number.isFinite(v) ? v : null; }
+    function bool(v) { return v === true; }
+    function sum(values) { return values.filter(v => typeof v === "number").reduce((a,b) => a + b, 0); }
+    function avg(values) {
+      const nums = values.filter(v => typeof v === "number" && Number.isFinite(v));
+      return nums.length ? Math.round(nums.reduce((a,b) => a+b, 0) / nums.length * 10) / 10 : null;
+    }
+    function pct(value, goal) { return value == null || goal <= 0 ? 0 : Math.max(0, Math.min(100, Math.round(value / goal * 100))); }
+    function current(date = todayKey()) { return ensureEntry(entries.find(e => e.date === date) || blank(date)); }
     function shiftDate(date, days) {
       const base = new Date(`${date}T12:00:00`);
       base.setDate(base.getDate() + days);
       return todayKey(base);
     }
-    function setSelectedDate(date) {
-      selectedDate = date || todayKey();
-      render();
+    function setSelectedDate(date) { selectedDate = date || todayKey(); render(); }
+    function hasAny(entry) {
+      return entry.weight_kg != null || entry.steps != null || entry.water_liters != null || entry.sleep_hours != null ||
+        entry.mood_1_10 != null || entry.energy_1_10 != null || entry.notes || entry.nutrition.tracked ||
+        entry.sleep.score != null || entry.bible.sessions.length || entry.reading_detail.sessions.length ||
+        entry.workouts.length || entry.screen_time.total_minutes != null ||
+        Object.values(entry.habits).some(h => h.value != null || h.completed);
     }
-    function pct(value, goal) { return value == null || goal <= 0 ? 0 : Math.max(0, Math.min(100, Math.round(value / goal * 100))); }
     function habitScore(entry) {
       const habits = Object.values(entry.habits).filter(h => h.status !== "missing" || h.value != null);
       if (!habits.length) return 0;
       return Math.round(habits.filter(h => h.completed).length / habits.length * 100);
     }
-    function hasAny(entry) {
-      return entry.weight_kg != null || entry.steps != null || entry.water_liters != null || entry.sleep_hours != null ||
-        entry.mood_1_10 != null || entry.energy_1_10 != null || entry.notes || entry.nutrition.tracked ||
-        Object.values(entry.habits).some(h => h.value != null || h.completed);
-    }
     function lastDays(count) {
       const byDate = new Map(entries.map(e => [e.date, e]));
       return Array.from({ length: count }, (_, i) => {
-        const d = new Date(Date.now() - i * 86400000);
-        return byDate.get(todayKey(d)) || blank(todayKey(d));
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        const key = todayKey(d);
+        return ensureEntry(byDate.get(key) || blank(key));
       });
     }
-    function avg(values) {
-      const nums = values.filter(v => typeof v === "number" && Number.isFinite(v));
-      return nums.length ? Math.round(nums.reduce((a,b) => a+b, 0) / nums.length * 10) / 10 : null;
+    function periodEntries(count = periodDays) { return lastDays(count); }
+    function minutesLabel(value) {
+      if (value == null) return "-";
+      const hours = Math.floor(value / 60);
+      const mins = Math.round(value % 60);
+      return hours ? `${hours}h ${mins}m` : `${mins}m`;
     }
-    function insights(count) {
-      const days = lastDays(count);
-      return {
-        days,
-        loggedDays: days.filter(hasAny).length,
-        nutritionTracked: days.filter(e => e.nutrition.tracked).length,
-        sleepTracked: days.filter(e => e.data_quality.sleep_tracked || e.sleep_hours != null).length,
-        stepsTracked: days.filter(e => e.data_quality.steps_tracked || e.steps != null).length,
-        avgCalories: avg(days.filter(e => e.nutrition.tracked).map(e => e.nutrition.calories)),
-        avgProtein: avg(days.filter(e => e.nutrition.tracked).map(e => e.nutrition.protein_g)),
-        avgSteps: avg(days.filter(e => e.data_quality.steps_tracked || e.steps != null).map(e => e.steps)),
-        avgSleep: avg(days.filter(e => e.data_quality.sleep_tracked || e.sleep_hours != null).map(e => e.sleep_hours)),
-        avgMood: avg(days.map(e => e.mood_1_10)),
-        avgEnergy: avg(days.map(e => e.energy_1_10)),
-        avgHabitScore: avg(days.filter(hasAny).map(habitScore))
-      };
+    function backupPayload() {
+      return { app: "reset-health-tracker", version: 2, exported_at: new Date().toISOString(), entries, settings, history };
     }
-    function saveEntries(next) { entries = next.sort((a,b) => b.date.localeCompare(a.date)); write(keys.entries, entries); render(); }
-    function saveSettings(next) { settings = next; write(keys.settings, settings); render(); }
-    function field(label, id, value, step = "1", min = "", max = "") {
-      return `<label class="field"><span>${label}</span><input id="${id}" type="number" inputmode="decimal" step="${step}" min="${min}" max="${max}" value="${value ?? ""}"></label>`;
-    }
-    function metric(label, value, unit, goal) {
-      return `<article class="card metric"><div class="metric-top"><label>${label}</label><span class="metric-icon">${icon(label)}</span></div><b>${value ?? "-"}</b><small>${unit || "today"}</small>${goal ? `<div class="bar"><span style="width:${pct(typeof value === "number" ? value : null, goal)}%"></span></div>` : ""}</article>`;
-    }
-    function icon(label) {
-      const map = { Calories:"CAL", Protein:"PRO", Carbs:"CAR", Fat:"FAT", Fiber:"FIB", Caffeine:"CAF", Creatine:"CRE", Weight:"WT", Steps:"STP", Water:"H2O", Sleep:"SLP", Workout:"FIT", Reading:"RD", Meditation:"MIN", Mood:"MO", Energy:"EN", "Habit score":"HS", Confidence:"OK" };
-      return map[label] || "•";
-    }
-    function progress(label, value, goal, unit) {
-      return `<article class="card progress"><div class="row"><strong>${label}</strong><small>${value ?? "-"} / ${goal} ${unit}</small></div><div class="bar"><span style="width:${pct(value, goal)}%"></span></div></article>`;
-    }
+    function backupText() { return JSON.stringify(backupPayload(), null, 2); }
     function section(eyebrow, title, copy) {
       return `<p class="eyebrow">${eyebrow}</p><h2>${title}</h2><p class="section-copy">${copy}</p>`;
     }
+    function metric(label, value, unit, goal, icon = "") {
+      return `<article class="card metric"><div class="metric-top"><label>${label}</label><span class="metric-icon">${icon || label.slice(0,3).toUpperCase()}</span></div><b>${value ?? "-"}</b><small>${unit || "today"}</small>${goal ? `<div class="bar"><span style="width:${pct(typeof value === "number" ? value : null, goal)}%"></span></div>` : ""}</article>`;
+    }
     function stat(label, value) { return `<div class="stat"><label>${label}</label><b>${value ?? "-"}</b></div>`; }
+    function progress(label, value, goal, unit, color = "") {
+      return `<article class="card"><div class="row"><strong>${label}</strong><small>${value ?? "-"} / ${goal} ${unit}</small></div><div class="bar ${color}"><span style="width:${pct(value, goal)}%"></span></div></article>`;
+    }
+    function inputField(label, id, value, step = "1", type = "number") {
+      return `<label class="field"><span>${label}</span><input id="${id}" type="${type}" ${type === "number" ? 'inputmode="decimal"' : ""} step="${step}" value="${value ?? ""}"></label>`;
+    }
+    function aggregate(days) {
+      const logged = days.filter(hasAny);
+      const workouts = days.flatMap(e => e.workouts);
+      const workoutMinutes = sum(workouts.map(w => w.minutes));
+      const workoutTypes = {};
+      workouts.forEach(w => { workoutTypes[w.type] = (workoutTypes[w.type] || 0) + (w.minutes || 0); });
+      const bibleBooks = [...new Set(days.flatMap(e => e.bible.books))];
+      const readingBooks = [...new Set(days.flatMap(e => e.reading_detail.books))];
+      const useful = sum(days.map(e => e.screen_time.useful_minutes));
+      const entertainment = sum(days.map(e => e.screen_time.entertainment_minutes));
+      const totalScreen = sum(days.map(e => e.screen_time.total_minutes ?? ((e.screen_time.useful_minutes || 0) + (e.screen_time.entertainment_minutes || 0))));
+      return {
+        days,
+        loggedDays: logged.length,
+        avgCalories: avg(days.filter(e => e.nutrition.tracked).map(e => e.nutrition.calories)),
+        avgProtein: avg(days.filter(e => e.nutrition.tracked).map(e => e.nutrition.protein_g)),
+        avgSleep: avg(days.filter(e => e.sleep_hours != null).map(e => e.sleep_hours)),
+        avgSleepScore: avg(days.map(e => e.sleep.score)),
+        avgMood: avg(days.map(e => e.mood_1_10)),
+        avgEnergy: avg(days.map(e => e.energy_1_10)),
+        avgFocus: avg(days.map(e => e.mood_detail.focus_1_10)),
+        avgStress: avg(days.map(e => e.mood_detail.stress_1_10)),
+        nutritionTracked: days.filter(e => e.nutrition.tracked).length,
+        workouts,
+        workoutMinutes,
+        workoutTypes,
+        bibleChapters: sum(days.map(e => e.bible.total_chapters)),
+        biblePages: sum(days.map(e => e.bible.total_pages)),
+        bibleBooks,
+        readingPages: sum(days.map(e => e.reading_detail.total_pages)),
+        readingBooks,
+        useful,
+        entertainment,
+        totalScreen,
+        totalSteps: sum(days.map(e => e.steps))
+      };
+    }
+
+    function sampleJson() {
+      return JSON.stringify(ensureEntry({
+        date: todayKey(),
+        replace_existing: true,
+        nutrition: { tracked: true, confidence: "medium", calories: null, protein_g: null, carbs_g: null, fat_g: null, fiber_g: null, caffeine_mg: null, creatine_g: null },
+        sleep: { score: null, bedtime: "", wake_time: "", notes: "" },
+        bible: { sessions: [{ book: "", chapters: [], pages: null, minutes: null, notes: "" }], total_pages: null, total_chapters: null, books: [] },
+        reading_detail: { sessions: [{ book: "", chapters: [], pages: null, minutes: null, notes: "" }], total_pages: null, total_chapters: null, books: [] },
+        workouts: [{ type: "cardio | weight training | calisthenics", minutes: null, intensity: "", notes: "" }],
+        screen_time: { useful_minutes: null, entertainment_minutes: null, total_minutes: null, notes: "" },
+        mood_detail: { stress_1_10: null, focus_1_10: null, motivation_1_10: null, tags: [], notes: "" }
+      }), null, 2);
+    }
     function chatGptPrompt() {
-      return `You are my daily health, nutrition, and habit tracking assistant.
+      return `You are my daily health, nutrition, Bible, reading, workout, screen-time, sleep, mood, and energy tracking assistant.
 
-Throughout the day, help me track meals, drinks, supplements, workouts, steps, sleep, mood, energy, reading, meditation/prayer, and notes.
+Use this chat as the capture place for the whole day. I will tell you meals, photos, labels, supplements, workouts, Apple Health sleep score, bedtime, wake time, Bible reading, books, pages, mood, energy, screen time, and notes.
 
-For food photos and food descriptions, follow this evidence order:
-1. If a nutrition label or package text is visible, read that first.
-2. If there is no usable label, use exact brand/product nutrition facts when I provide a brand or product name.
-3. Only if neither is available, estimate from similar foods and mark confidence lower.
-
-Do not turn missing values into zero. Use null when unknown. Nutrition.tracked should be true only if we have enough food information for the day. If nutrition was not tracked, set nutrition.tracked to false and calories/macros to null.
-
-When I say "export my tracker JSON", return ONLY one JSON object in this exact structure for today's date (${todayKey()}):
+Important:
+- Ask short follow-up questions only when needed.
+- Never turn missing information into zero. Use null when unknown.
+- For food photos: read labels first, use exact product info second, estimate only when needed.
+- Keep workout type as cardio, weight training, calisthenics, mobility, sport, or unspecified.
+- Track Bible book names and chapters as structured data.
+- Track screen time as useful/work and entertainment when I provide it.
+- At the end of the day, when I say "export my tracker JSON", return ONLY valid JSON in this shape:
 
 ${sampleJson()}`;
     }
@@ -307,259 +428,262 @@ ${sampleJson()}`;
     function renderToday() {
       const e = current(selectedDate);
       const isToday = selectedDate === todayKey();
-      const hasSavedEntry = entries.some(entry => entry.date === selectedDate);
+      const hasSaved = entries.some(entry => entry.date === selectedDate);
+      const workoutTotal = sum(e.workouts.map(w => w.minutes));
+      const workoutTypes = [...new Set(e.workouts.map(w => w.type).filter(Boolean))].join(", ");
+      const screenTotal = e.screen_time.total_minutes ?? (((e.screen_time.useful_minutes || 0) + (e.screen_time.entertainment_minutes || 0)) || null);
       const cards = [
-        ["Calories", e.nutrition.tracked ? e.nutrition.calories : null, "kcal", settings.calorie_goal],
-        ["Protein", e.nutrition.protein_g, "g", settings.protein_goal], ["Carbs", e.nutrition.carbs_g, "g"], ["Fat", e.nutrition.fat_g, "g"],
-        ["Fiber", e.nutrition.fiber_g, "g"], ["Caffeine", e.nutrition.caffeine_mg, "mg", settings.caffeine_limit], ["Creatine", e.nutrition.creatine_g, "g", settings.creatine_goal],
-        ["Weight", e.weight_kg, "kg"], ["Steps", e.steps, "", settings.step_goal], ["Water", e.water_liters, "L", settings.water_goal], ["Sleep", e.sleep_hours, "h", settings.sleep_goal],
-        ["Workout", e.habits.workout.value, "min"], ["Reading", e.habits.reading.value, "min"], ["Meditation", e.habits.meditation.value, "min"],
-        ["Mood", e.mood_1_10, "/10"], ["Energy", e.energy_1_10, "/10"], ["Habit score", habitScore(e), "%"], ["Confidence", e.data_quality.overall_confidence, ""]
+        ["Calories", e.nutrition.tracked ? e.nutrition.calories : null, "kcal", settings.calorie_goal, "CAL"],
+        ["Protein", e.nutrition.protein_g, "g", settings.protein_goal, "PRO"],
+        ["Sleep score", e.sleep.score, "/100", 100, "SLP"],
+        ["Sleep", e.sleep_hours, "h", settings.sleep_goal, "HRS"],
+        ["Mood", e.mood_1_10, "/10", 10, "MO"],
+        ["Energy", e.energy_1_10, "/10", 10, "EN"],
+        ["Workout", workoutTotal || null, "min", null, "FIT"],
+        ["Bible", e.bible.total_chapters || null, "chapters", null, "BIB"],
+        ["Steps", e.steps, "", settings.step_goal, "STP"],
+        ["Water", e.water_liters, "L", settings.water_goal, "H2O"],
+        ["Screen", screenTotal, "min", null, "SCR"],
+        ["Focus", e.mood_detail.focus_1_10, "/10", 10, "FOC"]
       ];
-      return `${section("Today", isToday ? "Current signal" : "Daily signal", hasSavedEntry ? e.date : `${e.date} - no saved record`)}
-      <article class="card" style="margin-top:1rem">
-        <div class="grid two">
-          <label class="field" style="box-shadow:none;padding:0"><span>View date</span><input type="date" value="${selectedDate}" onchange="setSelectedDate(this.value)"></label>
-          <div class="grid" style="grid-template-columns:repeat(3,1fr);align-items:end">
-            <button class="btn ghost" onclick="setSelectedDate(shiftDate(selectedDate, -1))">Prev</button>
-            <button class="btn dark" onclick="setSelectedDate(todayKey())">Today</button>
-            <button class="btn ghost" onclick="setSelectedDate(shiftDate(selectedDate, 1))">Next</button>
+      return `${section("Today", isToday ? "Current signal" : "Daily signal", hasSaved ? e.date : `${e.date} - no saved record`)}
+        <article class="card hero-card" style="margin-top:1rem">
+          <div class="grid two">
+            <label class="field" style="box-shadow:none;padding:0"><span>View date</span><input type="date" value="${selectedDate}" onchange="setSelectedDate(this.value)"></label>
+            <div class="grid" style="grid-template-columns:repeat(3,1fr);align-items:end">
+              <button class="btn ghost" onclick="setSelectedDate(shiftDate(selectedDate, -1))">Prev</button>
+              <button class="btn dark" onclick="setSelectedDate(todayKey())">Today</button>
+              <button class="btn ghost" onclick="setSelectedDate(shiftDate(selectedDate, 1))">Next</button>
+            </div>
           </div>
+          <div class="pillrow" style="margin-top:.8rem">
+            <span class="pill">Bed ${e.sleep.bedtime || "-"}</span>
+            <span class="pill">Wake ${e.sleep.wake_time || "-"}</span>
+            <span class="pill">${workoutTypes || "No workout type"}</span>
+            <span class="pill">${e.bible.books.join(", ") || "No Bible books"}</span>
+          </div>
+        </article>
+        <div class="grid metrics" style="margin-top:1rem">${cards.map(c => metric(...c)).join("")}</div>
+        <div class="grid two" style="margin-top:.85rem">
+          ${progress("Calories", e.nutrition.tracked ? e.nutrition.calories : null, settings.calorie_goal, "kcal")}
+          ${progress("Protein", e.nutrition.protein_g, settings.protein_goal, "g")}
+          ${progress("Steps", e.steps, settings.step_goal, "steps", "coral")}
+          ${progress("Sleep", e.sleep_hours, settings.sleep_goal, "h", "gold")}
         </div>
-      </article>
-      <div class="grid metrics" style="margin-top:1rem">${cards.map(c => metric(...c)).join("")}</div>
-      <div class="grid two" style="margin-top:.85rem">${progress("Calories", e.nutrition.tracked ? e.nutrition.calories : null, settings.calorie_goal, "kcal")}${progress("Protein", e.nutrition.protein_g, settings.protein_goal, "g")}${progress("Steps", e.steps, settings.step_goal, "steps")}${progress("Water", e.water_liters, settings.water_goal, "L")}${progress("Sleep", e.sleep_hours, settings.sleep_goal, "h")}${progress("Creatine", e.nutrition.creatine_g, settings.creatine_goal, "g")}</div>`;
+        <article class="card" style="margin-top:.85rem">
+          <strong>Day details</strong>
+          <div class="statgrid">
+            ${stat("Bible books", e.bible.books.join(", ") || "-")}
+            ${stat("Bible pages", e.bible.total_pages)}
+            ${stat("Reading pages", e.reading_detail.total_pages)}
+            ${stat("Useful screen", minutesLabel(e.screen_time.useful_minutes))}
+            ${stat("Entertainment", minutesLabel(e.screen_time.entertainment_minutes))}
+            ${stat("Stress", e.mood_detail.stress_1_10 == null ? null : `${e.mood_detail.stress_1_10}/10`)}
+            ${stat("Motivation", e.mood_detail.motivation_1_10 == null ? null : `${e.mood_detail.motivation_1_10}/10`)}
+            ${stat("Confidence", e.data_quality.overall_confidence)}
+          </div>
+        </article>`;
     }
-    function renderLog() {
-      const e = current();
-      return `${section("Quick log", "Fast daily entry", "Tap, enter, save.")}
-      <div class="grid two" style="margin-top:1rem">
-        ${field("Weight kg","weight_kg",e.weight_kg,"0.1")}${field("Steps","steps",e.steps)}${field("Water liters","water_liters",e.water_liters,"0.1")}${field("Sleep hours","sleep_hours",e.sleep_hours,"0.1")}
-        ${field("Workout minutes","workout",e.habits.workout.value)}${field("Reading minutes","reading",e.habits.reading.value)}${field("Meditation/prayer minutes","meditation",e.habits.meditation.value)}
-        ${field("Mood 1-10","mood_1_10",e.mood_1_10,"1","1","10")}${field("Energy 1-10","energy_1_10",e.energy_1_10,"1","1","10")}
-      </div>
-      <label class="field" style="margin-top:.75rem"><span>Notes</span><textarea id="notes">${e.notes || ""}</textarea></label>
-      <div class="grid two" style="margin-top:.9rem">
-        <button class="btn" onclick="saveLog()">Save log</button>
-        <button class="btn ghost" onclick="deleteEntry('${e.date}')">Clear today</button>
-      </div><div id="logStatus"></div>`;
-    }
-    function val(id) { const v = document.getElementById(id).value; return v === "" ? null : Number(v); }
-    function saveLog() {
-      const e = current();
-      e.weight_kg = val("weight_kg"); e.steps = val("steps"); e.water_liters = val("water_liters"); e.sleep_hours = val("sleep_hours");
-      e.mood_1_10 = val("mood_1_10"); e.energy_1_10 = val("energy_1_10"); e.notes = document.getElementById("notes").value;
-      [["workout","minutes"],["reading","minutes"],["meditation","minutes"]].forEach(([k, unit]) => {
-        const value = val(k); e.habits[k] = { completed: (value ?? 0) > 0, value, unit, status: value == null ? "missing" : (value ?? 0) > 0 ? "completed" : "not_completed" };
-      });
-      e.habits.water = { completed: e.water_liters != null, value: e.water_liters, unit: "liters", status: e.water_liters == null ? "missing" : "completed" };
-      e.data_quality = { ...e.data_quality, weight_tracked: e.weight_kg != null, steps_tracked: e.steps != null, sleep_tracked: e.sleep_hours != null, habits_tracked: "partial" };
-      saveEntries([e, ...entries.filter(x => x.date !== e.date)]);
-      document.getElementById("logStatus").innerHTML = `<div class="status success" style="margin-top:.8rem">Saved today's log.</div>`;
-    }
-    function deleteEntry(date) {
-      const exists = entries.some(e => e.date === date);
-      if (!exists) {
-        active = "today";
-        render();
-        return;
-      }
-      const ok = confirm(`Delete ${date}? This removes it from your ledger, averages, and share card.`);
-      if (!ok) return;
-      saveEntries(entries.filter(e => e.date !== date));
-      active = "ledger";
-      render();
-    }
-    function sampleJson() {
-      return JSON.stringify({ date: todayKey(), replace_existing: false, weight_kg: null, steps: null, water_liters: null, sleep_hours: null, mood_1_10: null, energy_1_10: null,
-        nutrition: { tracked: true, confidence: "high", calories: null, protein_g: null, carbs_g: null, fat_g: null, fiber_g: null, caffeine_mg: null, creatine_g: null },
-        habits: { workout:{completed:false,value:0,unit:"minutes",status:"not_completed"}, reading:{completed:false,value:0,unit:"minutes",status:"not_completed"}, meditation:{completed:false,value:0,unit:"minutes",status:"not_completed"}, water:{completed:false,value:null,unit:"liters",status:"missing"}, creatine:{completed:false,value:null,unit:"grams",status:"missing"} },
-        data_quality: { nutrition_tracked: true, sleep_tracked: false, steps_tracked: false, weight_tracked: false, habits_tracked: "partial", overall_confidence: "medium" }, notes: "" }, null, 2);
-    }
-    function renderImport() {
-      return `${section("ChatGPT import", "Paste daily JSON", "Use this after ChatGPT exports your day.")}
-      <textarea id="json" class="jsonbox" spellcheck="false" style="margin-top:1rem">${sampleJson()}</textarea>
-      <label class="field" style="margin-top:.75rem"><span>Import mode</span><label style="display:flex;align-items:center;gap:.6rem;color:var(--muted);font-weight:750"><input id="replaceExisting" type="checkbox" style="width:1.2rem;height:1.2rem" checked> Replace this date if it already exists</label></label>
-      <button class="btn dark" style="margin-top:.9rem;width:100%" onclick="doImport()">Validate and import</button><div id="importStatus"></div>
-      <article class="card" style="margin-top:1rem"><strong>Import history</strong><div class="ledger" style="margin-top:.7rem">${history.slice(0,5).map(h => `<div class="stat row"><b>${h.date}</b><small>${h.replaced_existing ? "replaced" : "imported"}</small></div>`).join("") || "<p class='section-copy'>No imports yet.</p>"}</div></article>`;
-    }
-    function renderFood() {
-      return `${section("ChatGPT tracker", "Capture in ChatGPT, save here", "Use ChatGPT during the day, then paste one clean JSON export into this app.")}
-      <article class="card" style="margin-top:1rem">
-        <strong>Daily flow</strong>
-        <ul class="source-list">
-          <li>Start a ChatGPT chat with the prompt below.</li>
-          <li>Send meals, labels, photos, habits, and notes to that chat during the day.</li>
-          <li>At night, ask ChatGPT: export my tracker JSON.</li>
-          <li>Paste the JSON into the Import tab.</li>
-        </ul>
-        <div class="grid two" style="margin-top:.9rem">
-          <button class="btn dark" onclick="copyPrompt()">Copy ChatGPT prompt</button>
-          <button class="btn" onclick="window.open('https://chatgpt.com/', '_blank')">Open ChatGPT</button>
-        </div>
-        <button class="btn ghost" style="margin-top:.75rem;width:100%" onclick="active='import';render()">Paste exported JSON</button>
-        <div id="promptStatus"></div>
-      </article>
-      <article class="card" style="margin-top:1rem">
-        <div class="row"><strong>Prompt preview</strong><small>${todayKey()}</small></div>
-        <textarea class="jsonbox" readonly style="margin-top:.75rem;min-height:22rem">${chatGptPrompt()}</textarea>
-      </article>`;
+    function renderChat() {
+      return `${section("ChatGPT tracker", "Capture there, learn here", "Use one daily ChatGPT thread as your capture assistant, then paste the JSON export into this app.")}
+        <article class="card" style="margin-top:1rem">
+          <strong>Recommended workflow</strong>
+          <div class="timeline">
+            <div class="timeline-row"><span>Morning</span><div class="bar"><span style="width:30%"></span></div><b>start chat</b></div>
+            <div class="timeline-row"><span>Day</span><div class="bar coral"><span style="width:70%"></span></div><b>log naturally</b></div>
+            <div class="timeline-row"><span>Night</span><div class="bar gold"><span style="width:100%"></span></div><b>export JSON</b></div>
+          </div>
+          <div class="grid two" style="margin-top:.9rem">
+            <button class="btn dark" onclick="copyPrompt()">Copy tracking prompt</button>
+            <button class="btn" onclick="window.open('https://chatgpt.com/', '_blank')">Open ChatGPT</button>
+          </div>
+          <button class="btn ghost" style="margin-top:.75rem;width:100%" onclick="active='import';render()">Paste exported JSON</button>
+          <div id="promptStatus"></div>
+        </article>
+        <article class="card" style="margin-top:1rem">
+          <div class="row"><strong>Prompt preview</strong><small>${todayKey()}</small></div>
+          <textarea class="jsonbox" readonly style="margin-top:.75rem">${chatGptPrompt()}</textarea>
+        </article>`;
     }
     async function copyPrompt() {
       const status = document.getElementById("promptStatus");
       try {
         await navigator.clipboard.writeText(chatGptPrompt());
-        status.innerHTML = `<div class="status success" style="margin-top:.8rem">Prompt copied. Paste it into ChatGPT, then track there throughout the day.</div>`;
+        status.innerHTML = `<div class="status success" style="margin-top:.8rem">Prompt copied. Use a new ChatGPT chat for each day, or one ongoing chat if it is still behaving cleanly.</div>`;
       } catch {
-        status.innerHTML = `<div class="status warn" style="margin-top:.8rem">Copy failed. You can select and copy the prompt preview manually.</div>`;
+        status.innerHTML = `<div class="status warn" style="margin-top:.8rem">Copy failed. Select and copy the prompt preview manually.</div>`;
       }
     }
-    function previewFoodPhoto(event) {
-      const file = event.target.files && event.target.files[0];
-      const preview = document.getElementById("foodPreview");
-      if (!file || !preview) return;
-      preview.src = URL.createObjectURL(file);
-      preview.style.display = "block";
+    function renderLog() {
+      const e = current(todayKey());
+      return `${section("Quick log", "Manual fallback", "For quick edits when you do not want to use ChatGPT.")}
+        <div class="grid two" style="margin-top:1rem">
+          ${inputField("Weight kg","weight_kg",e.weight_kg,"0.1")}
+          ${inputField("Steps","steps",e.steps)}
+          ${inputField("Water liters","water_liters",e.water_liters,"0.1")}
+          ${inputField("Sleep hours","sleep_hours",e.sleep_hours,"0.1")}
+          ${inputField("Sleep score","sleep_score",e.sleep.score)}
+          ${inputField("Bedtime","bedtime",e.sleep.bedtime,"1","time")}
+          ${inputField("Wake time","wake_time",e.sleep.wake_time,"1","time")}
+          ${inputField("Workout minutes","workout",sum(e.workouts.map(w => w.minutes)) || e.habits.workout.value)}
+          <label class="field"><span>Workout type</span><select id="workout_type"><option>cardio</option><option>weight training</option><option>calisthenics</option><option>mobility</option><option>sport</option><option>unspecified</option></select></label>
+          ${inputField("Mood 1-10","mood_1_10",e.mood_1_10)}
+          ${inputField("Energy 1-10","energy_1_10",e.energy_1_10)}
+          ${inputField("Useful screen minutes","useful_screen",e.screen_time.useful_minutes)}
+          ${inputField("Entertainment minutes","entertainment_screen",e.screen_time.entertainment_minutes)}
+        </div>
+        <label class="field" style="margin-top:.75rem"><span>Notes</span><textarea id="notes">${e.notes || ""}</textarea></label>
+        <div class="grid two" style="margin-top:.9rem">
+          <button class="btn" onclick="saveLog()">Save log</button>
+          <button class="btn ghost" onclick="deleteEntry('${e.date}')">Clear today</button>
+        </div><div id="logStatus"></div>`;
     }
-    function extractFoodNumber(text, names) {
-      for (const name of names) {
-        const re = new RegExp(`${name}[^0-9]{0,16}([0-9]+(?:\\\\.[0-9]+)?)`, "i");
-        const match = text.match(re);
-        if (match) return Number(match[1]);
-      }
-      return null;
-    }
-    function setFoodField(id, value) {
-      const el = document.getElementById(id);
-      if (el) el.value = value ?? "";
-    }
-    function analyzeFood() {
-      const text = document.getElementById("foodText").value.trim();
-      const hasPhoto = document.getElementById("foodPhoto").files.length > 0;
-      const status = document.getElementById("foodStatus");
-      const extracted = {
-        calories: extractFoodNumber(text, ["calories", "kcal", "energy"]),
-        protein: extractFoodNumber(text, ["protein"]),
-        carbs: extractFoodNumber(text, ["carbs", "carbohydrate", "carbohydrates"]),
-        fat: extractFoodNumber(text, ["fat", "total fat"]),
-        fiber: extractFoodNumber(text, ["fiber", "fibre"]),
-        caffeine: extractFoodNumber(text, ["caffeine"]),
-        creatine: extractFoodNumber(text, ["creatine"])
-      };
-      const found = Object.values(extracted).some(value => value != null);
-      document.getElementById("foodReview").style.display = "block";
-      setFoodField("food_calories", extracted.calories);
-      setFoodField("food_protein", extracted.protein);
-      setFoodField("food_carbs", extracted.carbs);
-      setFoodField("food_fat", extracted.fat);
-      setFoodField("food_fiber", extracted.fiber);
-      setFoodField("food_caffeine", extracted.caffeine);
-      setFoodField("food_creatine", extracted.creatine);
-      document.getElementById("foodNote").value = text;
-      if (found) {
-        document.getElementById("foodEvidence").textContent = "Text/label values found";
-        status.innerHTML = `<div class="status success" style="margin-top:.8rem">I found nutrition-like numbers in the text. Review them before saving.</div>`;
-      } else if (hasPhoto) {
-        document.getElementById("foodEvidence").textContent = "Photo ready, AI backend needed";
-        status.innerHTML = `<div class="status warn" style="margin-top:.8rem">Photo upload is ready, but this static app cannot read labels or search the web until we add the AI backend.</div>`;
-      } else {
-        document.getElementById("foodEvidence").textContent = "Manual review needed";
-        status.innerHTML = `<div class="status warn" style="margin-top:.8rem">Add label text, nutrition numbers, or a photo. Real natural-language estimates need the AI backend.</div>`;
-      }
-    }
-    function addFoodToToday() {
-      const e = current();
-      const fields = {
-        calories: val("food_calories"),
-        protein_g: val("food_protein"),
-        carbs_g: val("food_carbs"),
-        fat_g: val("food_fat"),
-        fiber_g: val("food_fiber"),
-        caffeine_mg: val("food_caffeine"),
-        creatine_g: val("food_creatine")
-      };
-      e.nutrition.tracked = true;
-      e.nutrition.confidence = document.getElementById("foodEvidence").textContent.includes("backend") ? "low" : "medium";
-      Object.entries(fields).forEach(([key, value]) => {
-        if (value != null) e.nutrition[key] = (e.nutrition[key] ?? 0) + value;
-      });
-      e.data_quality.nutrition_tracked = true;
-      e.data_quality.overall_confidence = e.nutrition.confidence;
-      const note = document.getElementById("foodNote").value.trim();
-      if (note) e.notes = [e.notes, `Food: ${note}`].filter(Boolean).join("\\n");
+    function val(id) { const el = document.getElementById(id); const v = el?.value ?? ""; return v === "" ? null : Number(v); }
+    function str(id) { return document.getElementById(id)?.value || ""; }
+    function saveLog() {
+      const e = current(todayKey());
+      e.weight_kg = val("weight_kg"); e.steps = val("steps"); e.water_liters = val("water_liters"); e.sleep_hours = val("sleep_hours");
+      e.sleep.score = val("sleep_score"); e.sleep.bedtime = str("bedtime"); e.sleep.wake_time = str("wake_time");
+      e.mood_1_10 = val("mood_1_10"); e.energy_1_10 = val("energy_1_10"); e.notes = str("notes");
+      const workoutMinutes = val("workout");
+      e.workouts = workoutMinutes == null ? [] : [{ type: str("workout_type"), minutes: workoutMinutes, intensity: "", notes: "" }];
+      e.habits.workout = { completed: (workoutMinutes || 0) > 0, value: workoutMinutes, unit: "minutes", status: workoutMinutes == null ? "missing" : (workoutMinutes || 0) > 0 ? "completed" : "not_completed" };
+      e.screen_time.useful_minutes = val("useful_screen");
+      e.screen_time.entertainment_minutes = val("entertainment_screen");
+      e.screen_time.total_minutes = (e.screen_time.useful_minutes || 0) + (e.screen_time.entertainment_minutes || 0) || null;
+      e.data_quality = { ...e.data_quality, weight_tracked: e.weight_kg != null, steps_tracked: e.steps != null, sleep_tracked: e.sleep_hours != null || e.sleep.score != null, habits_tracked: "partial" };
       saveEntries([e, ...entries.filter(x => x.date !== e.date)]);
-      active = "today";
+      document.getElementById("logStatus").innerHTML = `<div class="status success" style="margin-top:.8rem">Saved today's log.</div>`;
+    }
+    function saveEntries(next) {
+      entries = next.map(ensureEntry).sort((a,b) => b.date.localeCompare(a.date));
+      write(keys.entries, entries);
       render();
     }
-    function num(v) { return typeof v === "number" && Number.isFinite(v) ? v : null; }
-    function bool(v) { return v === true; }
-    function habit(source, fallback) { source = source && typeof source === "object" ? source : {}; return { completed: bool(source.completed), value: num(source.value), unit: typeof source.unit === "string" ? source.unit : fallback.unit, status: typeof source.status === "string" ? source.status : fallback.status }; }
-    function normalize(source) {
+    function deleteEntry(date) {
+      if (!entries.some(e => e.date === date)) return;
+      if (!confirm(`Delete ${date}? This removes it from your ledger, averages, and share card.`)) return;
+      saveEntries(entries.filter(e => e.date !== date));
+      active = "ledger";
+      render();
+    }
+    function normalizeImport(source) {
       if (!source || typeof source !== "object") throw new Error("Import must be a JSON object.");
       if (!/^\d{4}-\d{2}-\d{2}$/.test(source.date || "")) throw new Error("Import requires a date in YYYY-MM-DD format.");
-      const e = blank(source.date), n = source.nutrition || {}, h = source.habits || {}, q = source.data_quality || {};
-      Object.assign(e, { weight_kg: num(source.weight_kg), steps: num(source.steps), water_liters: num(source.water_liters), sleep_hours: num(source.sleep_hours), mood_1_10: num(source.mood_1_10), energy_1_10: num(source.energy_1_10), notes: typeof source.notes === "string" ? source.notes : "" });
-      e.nutrition = { tracked: bool(n.tracked), confidence: n.confidence || "medium", calories: num(n.calories), protein_g: num(n.protein_g), carbs_g: num(n.carbs_g), fat_g: num(n.fat_g), fiber_g: num(n.fiber_g), caffeine_mg: num(n.caffeine_mg), creatine_g: num(n.creatine_g) };
-      e.habits = { workout: habit(h.workout, e.habits.workout), reading: habit(h.reading, e.habits.reading), meditation: habit(h.meditation, e.habits.meditation), water: habit(h.water, e.habits.water), creatine: habit(h.creatine, e.habits.creatine) };
-      e.data_quality = { nutrition_tracked: bool(q.nutrition_tracked) || bool(n.tracked), sleep_tracked: bool(q.sleep_tracked) || e.sleep_hours != null, steps_tracked: bool(q.steps_tracked) || e.steps != null, weight_tracked: bool(q.weight_tracked) || e.weight_kg != null, habits_tracked: q.habits_tracked || "partial", overall_confidence: q.overall_confidence || "medium" };
-      return { entry: e, replace: bool(source.replace_existing) };
+      return { entry: ensureEntry(source), replace: bool(source.replace_existing) };
+    }
+    function renderImport() {
+      return `${section("ChatGPT import", "Paste daily JSON", "Old exports still work. New exports unlock sleep, Bible, workout, screen-time, and mood visuals.")}
+        <textarea id="json" class="jsonbox" spellcheck="false" style="margin-top:1rem">${sampleJson()}</textarea>
+        <label class="field" style="margin-top:.75rem"><span>Import mode</span><label style="display:flex;align-items:center;gap:.6rem;color:var(--muted);font-weight:750"><input id="replaceExisting" type="checkbox" style="width:1.2rem;height:1.2rem" checked> Replace this date if it already exists</label></label>
+        <button class="btn dark" style="margin-top:.9rem;width:100%" onclick="doImport()">Validate and import</button><div id="importStatus"></div>
+        <article class="card" style="margin-top:1rem"><strong>Import history</strong><div class="ledger" style="margin-top:.7rem">${history.slice(0,5).map(h => `<div class="stat row"><b>${h.date}</b><small>${h.replaced_existing ? "replaced" : "imported"}</small></div>`).join("") || "<p class='section-copy'>No imports yet.</p>"}</div></article>`;
     }
     function doImport() {
-      const raw = document.getElementById("json").value, box = document.getElementById("importStatus");
+      const raw = document.getElementById("json").value;
+      const box = document.getElementById("importStatus");
       try {
         const parsed = JSON.parse(raw);
         if (document.getElementById("replaceExisting")?.checked) parsed.replace_existing = true;
-        const payload = normalize(parsed), exists = entries.some(e => e.date === payload.entry.date);
-        if (exists && !payload.replace) throw new Error(`A record already exists for ${payload.entry.date}. Set replace_existing to true to replace it.`);
+        const payload = normalizeImport(parsed);
+        const exists = entries.some(e => e.date === payload.entry.date);
+        if (exists && !payload.replace) throw new Error(`A record already exists for ${payload.entry.date}.`);
         entries = [payload.entry, ...entries.filter(e => e.date !== payload.entry.date)].sort((a,b) => b.date.localeCompare(a.date));
         history = [{ id: crypto.randomUUID(), imported_at: new Date().toISOString(), date: payload.entry.date, raw_json: raw, replaced_existing: exists && payload.replace }, ...history];
-        write(keys.entries, entries); write(keys.history, history);
+        write(keys.entries, entries);
+        write(keys.history, history);
+        selectedDate = payload.entry.date;
         box.innerHTML = `<div class="status success" style="margin-top:.8rem">${exists ? "Replaced" : "Imported"} ${payload.entry.date}.</div>`;
         document.getElementById("dayCount").textContent = `${entries.length} days`;
-      } catch (err) { box.innerHTML = `<div class="status warn" style="margin-top:.8rem">${err.message || "Import failed."}</div>`; }
+      } catch (err) {
+        box.innerHTML = `<div class="status warn" style="margin-top:.8rem">${err.message || "Import failed."}</div>`;
+      }
     }
     function renderLedger() {
       return `${section("Ledger", "Daily records", `${entries.length} saved day${entries.length === 1 ? "" : "s"}`)}
-      <div class="ledger" style="margin-top:1rem">${entries.map(e => `<article class="card"><div class="row"><div><h3>${e.date}</h3><p class="section-copy">${e.notes || "No notes"}</p></div><b>${habitScore(e)}%</b></div><div class="statgrid">${stat("Calories", e.nutrition.tracked ? e.nutrition.calories : "untracked")}${stat("Protein", e.nutrition.protein_g)}${stat("Steps", e.steps)}${stat("Weight", e.weight_kg == null ? null : e.weight_kg + " kg")}${stat("Nutrition", e.nutrition.tracked ? "tracked" : "untracked")}${stat("Confidence", e.data_quality.overall_confidence)}</div><button class="btn ghost" style="margin-top:.85rem;width:100%" onclick="deleteEntry('${e.date}')">Delete this day</button></article>`).join("") || `<div class="card">No daily records yet. Add a quick log or paste a ChatGPT import.</div>`}</div>`;
+        <div class="ledger" style="margin-top:1rem">${entries.map(e => {
+          const workout = sum(e.workouts.map(w => w.minutes));
+          return `<article class="card"><div class="row"><div><h3>${e.date}</h3><p class="section-copy">${e.notes || "No notes"}</p></div><b>${habitScore(e)}%</b></div><div class="statgrid">${stat("Calories", e.nutrition.tracked ? e.nutrition.calories : "untracked")}${stat("Protein", e.nutrition.protein_g)}${stat("Sleep score", e.sleep.score)}${stat("Workout", minutesLabel(workout))}${stat("Bible", `${e.bible.total_chapters || 0} ch`) }${stat("Mood", e.mood_1_10)}${stat("Energy", e.energy_1_10)}${stat("Screen", minutesLabel(e.screen_time.total_minutes))}</div><button class="btn ghost" style="margin-top:.85rem;width:100%" onclick="deleteEntry('${e.date}')">Delete this day</button></article>`;
+        }).join("") || `<div class="card">No daily records yet. Add a quick log or paste a ChatGPT import.</div>`}</div>`;
     }
-    function insightGrid(title, data, total) {
-      return `<article class="card"><h3>${title}</h3><div class="statgrid">${stat("Avg calories", data.avgCalories)}${stat("Avg protein", data.avgProtein == null ? null : data.avgProtein + "g")}${stat("Avg steps", data.avgSteps)}${stat("Avg sleep", data.avgSleep == null ? null : data.avgSleep + "h")}${stat("Avg mood", data.avgMood)}${stat("Avg energy", data.avgEnergy)}${stat("Habit score avg", data.avgHabitScore == null ? null : data.avgHabitScore + "%")}${stat("Nutrition tracked", data.nutritionTracked + "/" + total)}${stat("Sleep tracked", data.sleepTracked + "/" + total)}${stat("Steps tracked", data.stepsTracked + "/" + total)}${stat("Logged days", data.loggedDays + "/" + total)}</div></article>`;
+    function setPeriod(days) { periodDays = days; render(); }
+    function barRow(label, value, max, color = "") {
+      return `<div class="timeline-row"><span>${label}</span><div class="bar ${color}"><span style="width:${max ? Math.min(100, Math.round(value / max * 100)) : 0}%"></span></div><b>${minutesLabel(value)}</b></div>`;
     }
-    function renderTrends() {
-      const seven = insights(7), fourteen = insights(14);
-      const warnings = [seven.nutritionTracked < 5 ? "Calorie averages may be misleading because nutrition was tracked fewer than 5 of the last 7 days." : "", seven.sleepTracked < 5 ? "Sleep insights may be incomplete." : "", seven.loggedDays < 5 ? "More logged days are needed for reliable trends." : ""].filter(Boolean);
-      return `${section("Trends", "7-day and 14-day signal", "Averages only count tracked days where required.")}<div class="grid" style="margin-top:1rem">${insightGrid("Last 7 days", seven, 7)}${insightGrid("Last 14 days", fourteen, 14)}${warnings.map(w => `<div class="status warn">${w}</div>`).join("")}</div>`;
+    function renderInsights() {
+      const data = aggregate(periodEntries());
+      const maxWorkout = Math.max(1, ...Object.values(data.workoutTypes));
+      const periodLabel = periodDays === 365 ? "year" : periodDays === 30 ? "month" : "week";
+      const workoutEnergy = compareAvg(periodEntries(), e => sum(e.workouts.map(w => w.minutes)) > 0, e => e.energy_1_10);
+      const sleepEnergy = compareAvg(periodEntries(), e => (e.sleep.score || 0) >= 80 || (e.sleep_hours || 0) >= settings.sleep_goal, e => e.energy_1_10);
+      const screenMood = compareAvg(periodEntries(), e => (e.screen_time.entertainment_minutes || 0) <= 90, e => e.mood_1_10);
+      return `${section("Insights", `${periodDays}-day overview`, "A clean read on what you consumed, how you spent time, and how you felt.")}
+        <div class="pillrow" style="margin-top:1rem">
+          <button class="btn ${periodDays === 7 ? "" : "soft"}" onclick="setPeriod(7)">Week</button>
+          <button class="btn ${periodDays === 30 ? "" : "soft"}" onclick="setPeriod(30)">Month</button>
+          <button class="btn ${periodDays === 365 ? "" : "soft"}" onclick="setPeriod(365)">Year</button>
+        </div>
+        <div class="grid metrics" style="margin-top:1rem">
+          ${metric("Avg calories", data.avgCalories, "kcal", null, "CAL")}
+          ${metric("Avg protein", data.avgProtein, "g", null, "PRO")}
+          ${metric("Avg sleep score", data.avgSleepScore, "/100", null, "SLP")}
+          ${metric("Avg energy", data.avgEnergy, "/10", null, "EN")}
+          ${metric("Workout total", data.workoutMinutes, "min", null, "FIT")}
+          ${metric("Bible chapters", data.bibleChapters, "chapters", null, "BIB")}
+          ${metric("Useful screen", data.useful, "min", null, "USE")}
+          ${metric("Entertainment", data.entertainment, "min", null, "ENT")}
+        </div>
+        <div class="grid two" style="margin-top:.85rem">
+          <article class="card"><strong>Workout split</strong><div class="timeline">${Object.entries(data.workoutTypes).map(([k,v]) => barRow(k, v, maxWorkout, "coral")).join("") || "<p class='section-copy' style='margin-top:.6rem'>No workout data in this period.</p>"}</div></article>
+          <article class="card"><strong>Time use</strong><div class="timeline">${barRow("Useful", data.useful, Math.max(data.useful, data.entertainment, 1))}${barRow("Entertainment", data.entertainment, Math.max(data.useful, data.entertainment, 1), "gold")}${barRow("Workout", data.workoutMinutes, Math.max(data.useful, data.entertainment, data.workoutMinutes, 1), "coral")}</div></article>
+        </div>
+        <article class="card" style="margin-top:.85rem">
+          <strong>Bible and reading</strong>
+          <div class="statgrid">${stat("Bible books", data.bibleBooks.join(", ") || "-")}${stat("Bible chapters", data.bibleChapters)}${stat("Bible pages", data.biblePages)}${stat("Other books", data.readingBooks.join(", ") || "-")}${stat("Reading pages", data.readingPages)}${stat("Logged days", `${data.loggedDays}/${periodDays}`)}</div>
+        </article>
+        <article class="card" style="margin-top:.85rem">
+          <strong>Possible patterns</strong>
+          <div class="statgrid">${stat("Workout days energy", workoutEnergy)}${stat("Good sleep energy", sleepEnergy)}${stat("Lower entertainment mood", screenMood)}${stat("Note", `These are correlations for this ${periodLabel}, not proof.`)}</div>
+        </article>`;
+    }
+    function compareAvg(days, predicate, selector) {
+      const yes = avg(days.filter(predicate).map(selector));
+      const no = avg(days.filter(e => !predicate(e)).map(selector));
+      if (yes == null || no == null) return "-";
+      const diff = Math.round((yes - no) * 10) / 10;
+      return `${yes} vs ${no} (${diff >= 0 ? "+" : ""}${diff})`;
     }
     function renderShare() {
-      const data = insights(7), days = data.days, workouts = days.filter(e => e.habits.workout.completed).length, creatine = days.filter(e => e.habits.creatine.completed || (e.nutrition.creatine_g ?? 0) >= settings.creatine_goal).length;
-      const totalSteps = days.reduce((sum, e) => sum + (e.steps || 0), 0);
-      const score = Math.round(((data.loggedDays/7)*.45 + (workouts/7)*.2 + (data.nutritionTracked/7)*.2 + (creatine/7)*.15) * 100);
-      const sorted = [...days].sort((a,b) => a.date.localeCompare(b.date));
-      const win = score >= 75 ? "Strong consistency stack." : data.loggedDays >= 5 ? "You kept the thread alive." : "You restarted the signal.";
-      const focus = data.nutritionTracked < 5 ? "Track food at least five days." : data.avgSleep != null && data.avgSleep < settings.sleep_goal ? "Protect the sleep window." : "Keep the basics boring.";
-      return `${section("Share card", "Weekly report", "Screenshot-friendly, no exact weight by default.")}<div class="share-wrap" style="margin-top:1rem"><div class="share"><p class="eyebrow gold">Weekly Reset Report</p><h2>${pretty(sorted[0].date)} - ${pretty(sorted.at(-1).date)}</h2><div class="score"><small>Consistency score</small><b>${score}%</b></div><div class="share-grid">${shareStat("Days logged", data.loggedDays + "/7")}${shareStat("Workouts", workouts)}${shareStat("Food tracked", data.nutritionTracked + "/7")}${shareStat("Avg protein", data.avgProtein == null ? "-" : data.avgProtein + "g")}${shareStat("Total steps", totalSteps.toLocaleString())}${shareStat("Creatine", creatine + "/7")}</div><div class="share-bottom"><div><small class="gold">Weekly Win</small><p>${win}</p></div><div><small class="gold">Focus Next Week</small><p>${focus}</p></div><div class="footer">Progress over perfection.</div></div></div></div>`;
+      const data = aggregate(periodEntries(7));
+      const consistency = Math.round(((data.loggedDays / 7) * .35 + (data.nutritionTracked / 7) * .2 + (data.workouts.length / 7) * .2 + Math.min(1, data.bibleChapters / 7) * .15 + Math.min(1, (data.avgSleepScore || 0) / 85) * .1) * 100);
+      return `${section("Share card", "Weekly reset report", "Screenshot-friendly overview with richer life data.")}
+        <div class="share-wrap" style="margin-top:1rem"><div class="share">
+          <p class="eyebrow gold">Weekly Reset Report</p><h2>${pretty(periodEntries(7).at(-1).date)} - ${pretty(periodEntries(7)[0].date)}</h2>
+          <div class="score"><small>Consistency score</small><b>${consistency}%</b></div>
+          <div class="share-grid">${shareStat("Days logged", `${data.loggedDays}/7`)}${shareStat("Workouts", data.workouts.length)}${shareStat("Bible", `${data.bibleChapters} ch`)}${shareStat("Avg protein", data.avgProtein == null ? "-" : `${data.avgProtein}g`)}${shareStat("Sleep score", data.avgSleepScore ?? "-")}${shareStat("Useful screen", minutesLabel(data.useful))}</div>
+          <div class="share-bottom"><div><small class="gold">Weekly Win</small><p>${data.bibleChapters || data.workoutMinutes ? "You kept investing in the inputs." : "You kept the signal alive."}</p></div><div><small class="gold">Focus Next Week</small><p>${data.entertainment > data.useful ? "Tilt screen time toward useful blocks." : "Protect sleep and repeat the basics."}</p></div><div class="footer">Progress over perfection.</div></div>
+        </div></div>`;
     }
     function shareStat(label, value) { return `<div class="share-stat"><small>${label}</small><b>${value}</b></div>`; }
     function renderSettings() {
       const fields = [["calorie_goal","Calorie goal","1"],["protein_goal","Protein goal","1"],["step_goal","Step goal","1"],["water_goal","Water goal","0.1"],["sleep_goal","Sleep goal","0.1"],["caffeine_limit","Caffeine limit","1"],["creatine_goal","Creatine goal","0.1"],["goal_weight","Goal weight","0.1"]];
-      return `${section("Goals", "Personal targets", "Stored locally in this browser.")}<div class="grid two" style="margin-top:1rem">${fields.map(([id,label,step]) => field(label, id, settings[id], step)).join("")}</div><button class="btn" style="margin-top:.9rem;width:100%" onclick="saveGoals()">Save goals</button><div id="goalStatus"></div>
-      <article class="card" style="margin-top:1.1rem">
-        <strong>Data backup</strong>
-        <p class="section-copy" style="margin-top:.35rem">Use this before clearing Safari data, reinstalling the Home Screen app, or testing a new link.</p>
-        <div class="grid two" style="margin-top:.9rem">
-          <button class="btn dark" onclick="copyBackup()">Copy backup JSON</button>
-          <button class="btn" onclick="downloadBackup()">Download backup</button>
-        </div>
-        <label class="field" style="margin-top:.9rem"><span>Restore backup JSON</span><textarea id="backupJson" class="backupbox" placeholder="Paste a backup JSON here"></textarea></label>
-        <button class="btn dark" style="margin-top:.75rem;width:100%" onclick="restoreBackup()">Restore backup</button>
-        <button class="btn ghost" style="margin-top:.75rem;width:100%" onclick="clearAllData()">Clear all local data</button>
-        <div id="backupStatus"></div>
-      </article>`;
+      return `${section("Goals", "Personal targets and data", "Stored locally in this browser. Back up before clearing cache or reinstalling.")}
+        <div class="grid two" style="margin-top:1rem">${fields.map(([id,label,step]) => inputField(label, id, settings[id], step)).join("")}<label class="field"><span>Timezone</span><input id="time_zone" value="${settings.time_zone || browserTimeZone}"></label></div>
+        <button class="btn" style="margin-top:.9rem;width:100%" onclick="saveGoals()">Save goals</button><div id="goalStatus"></div>
+        <article class="card" style="margin-top:1.1rem">
+          <strong>Data backup</strong><p class="section-copy" style="margin-top:.35rem">Use this before clearing Safari data, reinstalling the Home Screen app, or testing a new link.</p>
+          <div class="grid two" style="margin-top:.9rem"><button class="btn dark" onclick="copyBackup()">Copy backup JSON</button><button class="btn" onclick="downloadBackup()">Download backup</button></div>
+          <label class="field" style="margin-top:.9rem"><span>Restore backup JSON</span><textarea id="backupJson" class="backupbox" placeholder="Paste a backup JSON here"></textarea></label>
+          <button class="btn dark" style="margin-top:.75rem;width:100%" onclick="restoreBackup()">Restore backup</button>
+          <button class="btn ghost" style="margin-top:.75rem;width:100%" onclick="clearAllData()">Clear all local data</button>
+          <div id="backupStatus"></div>
+        </article>`;
     }
     function saveGoals() {
       const next = {};
-      Object.keys(defaultSettings).forEach(k => next[k] = Number(document.getElementById(k).value));
-      saveSettings(next);
+      Object.keys(defaultSettings).forEach(k => next[k] = k === "time_zone" ? str(k) : Number(document.getElementById(k)?.value));
+      settings = { ...defaultSettings, ...next };
+      write(keys.settings, settings);
       document.getElementById("goalStatus").innerHTML = `<div class="status success" style="margin-top:.8rem">Goals saved.</div>`;
     }
     async function copyBackup() {
@@ -571,7 +695,7 @@ ${sampleJson()}`;
         const box = document.getElementById("backupJson");
         box.value = backupText();
         box.select();
-        status.innerHTML = `<div class="status warn" style="margin-top:.8rem">Clipboard copy failed. The backup is in the restore box so you can select and copy it manually.</div>`;
+        status.innerHTML = `<div class="status warn" style="margin-top:.8rem">Clipboard copy failed. The backup is in the restore box so you can copy it manually.</div>`;
       }
     }
     function downloadBackup() {
@@ -589,32 +713,22 @@ ${sampleJson()}`;
     function restoreBackup() {
       const status = document.getElementById("backupStatus");
       try {
-        const raw = document.getElementById("backupJson").value.trim();
-        const data = JSON.parse(raw);
-        if (!data || data.app !== "reset-health-tracker" || !Array.isArray(data.entries)) {
-          throw new Error("This does not look like a Reset Health Tracker backup.");
-        }
-        entries = data.entries.sort((a,b) => b.date.localeCompare(a.date));
+        const data = JSON.parse(document.getElementById("backupJson").value.trim());
+        if (!data || data.app !== "reset-health-tracker" || !Array.isArray(data.entries)) throw new Error("This does not look like a Reset backup.");
+        entries = data.entries.map(ensureEntry).sort((a,b) => b.date.localeCompare(a.date));
         settings = { ...defaultSettings, ...(data.settings || {}) };
         history = Array.isArray(data.history) ? data.history : [];
-        write(keys.entries, entries);
-        write(keys.settings, settings);
-        write(keys.history, history);
-        status.innerHTML = `<div class="status success" style="margin-top:.8rem">Backup restored. ${entries.length} day${entries.length === 1 ? "" : "s"} loaded.</div>`;
+        write(keys.entries, entries); write(keys.settings, settings); write(keys.history, history);
+        status.innerHTML = `<div class="status success" style="margin-top:.8rem">Backup restored. ${entries.length} days loaded.</div>`;
         setTimeout(render, 600);
       } catch (err) {
         status.innerHTML = `<div class="status warn" style="margin-top:.8rem">${err.message || "Could not restore that backup."}</div>`;
       }
     }
     function clearAllData() {
-      const typed = prompt('Type DELETE to clear all tracker data stored on this device.');
-      if (typed !== "DELETE") return;
-      entries = [];
-      settings = { ...defaultSettings };
-      history = [];
-      localStorage.removeItem(keys.entries);
-      localStorage.removeItem(keys.settings);
-      localStorage.removeItem(keys.history);
+      if (prompt("Type DELETE to clear all tracker data stored on this device.") !== "DELETE") return;
+      entries = []; settings = { ...defaultSettings }; history = [];
+      localStorage.removeItem(keys.entries); localStorage.removeItem(keys.settings); localStorage.removeItem(keys.history);
       render();
     }
     function renderNav() {
@@ -624,14 +738,12 @@ ${sampleJson()}`;
       document.getElementById("todayLabel").textContent = pretty(todayKey());
       document.getElementById("dayCount").textContent = `${entries.length} days`;
       renderNav();
-      const map = { today: renderToday, food: renderFood, log: renderLog, import: renderImport, ledger: renderLedger, trends: renderTrends, share: renderShare, settings: renderSettings };
+      const map = { today: renderToday, chat: renderChat, log: renderLog, import: renderImport, ledger: renderLedger, insights: renderInsights, share: renderShare, settings: renderSettings };
       document.getElementById("screen").innerHTML = map[active]();
     }
     render();
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("./sw.js").catch(() => {});
-      });
+      window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
     }
   </script>
 </body>
