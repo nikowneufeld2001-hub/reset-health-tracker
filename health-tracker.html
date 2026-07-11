@@ -28,7 +28,35 @@
       --teal: #4f9aa7;
       --line: #e5e5ea;
       --white: rgba(255,255,255,.96);
+      --surface: #ffffff;
+      --surface-soft: #f5f5f7;
+      --header-bg: rgba(245,245,247,.84);
+      --nav-bg: rgba(255,255,255,.94);
+      --bar-bg: #eef0f4;
+      --field-bg: #ffffff;
       --shadow: 0 10px 28px rgba(35,39,47,.08);
+    }
+    body[data-theme="dark"] {
+      --ink: #f7f8fb;
+      --muted: #9aa4b2;
+      --mist: #090b10;
+      --leaf: #4aa878;
+      --leaf-soft: #14231b;
+      --coral: #e07368;
+      --gold: #d2a450;
+      --blue: #5c8fff;
+      --blue-soft: #111d34;
+      --violet: #9b8cff;
+      --teal: #65b6c2;
+      --line: rgba(255,255,255,.12);
+      --white: rgba(27,30,38,.94);
+      --surface: #151821;
+      --surface-soft: #202431;
+      --header-bg: rgba(9,11,16,.76);
+      --nav-bg: rgba(19,22,30,.9);
+      --bar-bg: #2a2f3d;
+      --field-bg: #171b24;
+      --shadow: 0 18px 40px rgba(0,0,0,.28);
     }
     * { box-sizing: border-box; }
     body {
@@ -44,13 +72,13 @@
     header {
       position: sticky; top: 0; z-index: 3;
       display: flex; justify-content: space-between; align-items: center; gap: 1rem;
-      padding: .85rem 1rem; background: rgba(245,245,247,.84); backdrop-filter: blur(20px);
+      padding: .85rem 1rem; background: var(--header-bg); backdrop-filter: blur(20px);
       border-bottom: 1px solid rgba(229,229,234,.72);
     }
     .brand { display: flex; align-items: center; gap: .75rem; min-width: 0; }
     .brandmark {
       width: 2.65rem; height: 2.65rem; border-radius: .72rem;
-      background: #fff;
+      background: var(--surface);
       display: grid; place-items: center; box-shadow: 0 10px 24px rgba(47,111,237,.16);
       position: relative; overflow: hidden; flex: 0 0 auto;
       border: 1px solid rgba(229,229,234,.9);
@@ -61,7 +89,7 @@
     h1 { margin-bottom: 0; font-size: 1.28rem; line-height: 1.05; }
     h2 { margin-bottom: .2rem; font-size: 1.65rem; line-height: 1.05; }
     h3 { margin-bottom: .35rem; }
-    .date-pill { border-radius: 999px; background: white; padding: .45rem .8rem; text-align: right; box-shadow: 0 3px 14px rgba(0,0,0,.05); border: 1px solid var(--line); }
+    .date-pill { border-radius: 999px; background: var(--surface); padding: .45rem .8rem; text-align: right; box-shadow: 0 3px 14px rgba(0,0,0,.05); border: 1px solid var(--line); }
     .date-pill p { margin: 0; font-size: .78rem; color: var(--muted); }
     .date-pill strong { display: block; font-size: .9rem; }
     main { padding: 1.1rem 1rem; }
@@ -71,7 +99,7 @@
     .two { grid-template-columns: 1fr; }
     .three { grid-template-columns: 1fr; }
     .card { background: var(--white); border: 1px solid rgba(229,229,234,.84); border-radius: .5rem; padding: 1rem; box-shadow: var(--shadow); }
-    .hero-card { background: #fff; border: 1px solid var(--line); }
+    .hero-card { background: var(--surface); border: 1px solid var(--line); }
     .metric { min-height: 7.1rem; }
     .metric-top, .row { display: flex; align-items: center; justify-content: space-between; gap: .7rem; }
     .metric label, .stat label { color: var(--muted); font-size: .78rem; font-weight: 750; }
@@ -88,15 +116,21 @@
     .metric.violet .metric-icon { background: #f0eefb; color: var(--violet); }
     .metric.gold .metric-icon { background: #fbf3e2; color: #8a641d; }
     .metric.teal .metric-icon { background: #edf7f8; color: #357681; }
-    .bar { height: .48rem; margin-top: .8rem; overflow: hidden; border-radius: 99px; background: #eef0f4; }
+    body[data-theme="dark"] .metric.red .metric-icon { background: rgba(224,115,104,.16); color: #ff9a91; }
+    body[data-theme="dark"] .metric.green .metric-icon { background: rgba(74,168,120,.16); color: #7bd79f; }
+    body[data-theme="dark"] .metric.blue .metric-icon { background: rgba(92,143,255,.16); color: #8fb1ff; }
+    body[data-theme="dark"] .metric.violet .metric-icon { background: rgba(155,140,255,.16); color: #bbb1ff; }
+    body[data-theme="dark"] .metric.gold .metric-icon { background: rgba(210,164,80,.16); color: #e8c37b; }
+    body[data-theme="dark"] .metric.teal .metric-icon { background: rgba(101,182,194,.16); color: #8ed4dd; }
+    .bar { height: .48rem; margin-top: .8rem; overflow: hidden; border-radius: 99px; background: var(--bar-bg); }
     .bar span { display: block; height: 100%; width: 0; border-radius: inherit; background: var(--blue); }
     .bar.coral span { background: var(--coral); }
     .bar.gold span { background: var(--gold); }
-    .field { display: block; background: white; border-radius: .5rem; padding: .85rem; box-shadow: var(--shadow); border: 1px solid rgba(229,229,234,.8); }
+    .field { display: block; background: var(--field-bg); border-radius: .5rem; padding: .85rem; box-shadow: var(--shadow); border: 1px solid var(--line); }
     .field span { display: block; margin-bottom: .45rem; font-size: .9rem; font-weight: 780; }
     input, textarea, select {
       width: 100%; border: 1px solid var(--line); border-radius: .5rem; outline: none;
-      background: white; color: var(--ink);
+      background: var(--field-bg); color: var(--ink);
     }
     input, select { min-height: 3rem; padding: 0 .8rem; font-size: 1.03rem; font-weight: 720; }
     textarea { min-height: 8rem; padding: .8rem; resize: vertical; }
@@ -107,15 +141,16 @@
       min-height: 3.15rem; border: 0; border-radius: .6rem; padding: 0 1rem;
       background: var(--blue); color: white; font-weight: 850; box-shadow: var(--shadow);
     }
-    .btn.dark { background: var(--ink); }
+    .btn.dark { background: var(--ink); color: var(--mist); }
     .btn.ghost { background: transparent; color: #8a3b25; box-shadow: none; border: 1px solid #efc7b8; }
     .btn.soft { background: var(--blue-soft); color: var(--blue); box-shadow: none; }
+    body[data-theme="dark"] .btn.ghost { color: #f1a099; border-color: rgba(224,115,104,.35); }
     .status { border-radius: .6rem; padding: .85rem 1rem; font-size: .9rem; font-weight: 760; }
     .success { background: #eaf8ef; color: #1e6c3e; }
     .warn { background: #fff5d9; color: #7a4b05; }
     .ledger { display: grid; gap: .75rem; }
     .statgrid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: .5rem; margin-top: .8rem; }
-    .stat { border-radius: .5rem; background: #f5f5f7; padding: .65rem; }
+    .stat { border-radius: .5rem; background: var(--surface-soft); padding: .65rem; }
     .stat b { display: block; margin-top: .15rem; overflow-wrap: anywhere; }
     .pillrow { display: flex; gap: .45rem; overflow-x: auto; padding-bottom: .15rem; }
     .pill { flex: 0 0 auto; border-radius: 999px; background: var(--blue-soft); color: var(--blue); padding: .42rem .7rem; font-size: .78rem; font-weight: 850; }
@@ -123,7 +158,7 @@
     .timeline-row { display: grid; grid-template-columns: 7.2rem 1fr 3.5rem; align-items: center; gap: .55rem; font-size: .85rem; color: var(--muted); }
     .nav {
       position: fixed; left: 0; right: 0; bottom: 0; z-index: 4;
-      background: rgba(255,255,255,.94); backdrop-filter: blur(18px);
+      background: var(--nav-bg); backdrop-filter: blur(18px);
       border-top: 1px solid rgba(255,255,255,.9);
       padding: .5rem .45rem max(.55rem, env(safe-area-inset-bottom));
       box-shadow: 0 -12px 40px rgba(30,40,34,.1);
@@ -144,9 +179,10 @@
     .share-wrap { display: flex; justify-content: center; }
     .share {
       width: min(100%, 390px); aspect-ratio: 9 / 16; border-radius: .75rem;
-      background: #17201d; color: white; padding: 1.45rem; box-shadow: var(--shadow);
+      background: #111622; color: white; padding: 1.45rem; box-shadow: var(--shadow);
       display: flex; flex-direction: column; overflow: hidden;
     }
+    body[data-theme="dark"] .share { background: linear-gradient(180deg, #101725, #080a0f); border: 1px solid rgba(255,255,255,.08); }
     .share h2 { margin: .25rem 0 0; color: white; font-size: 2rem; line-height: 1.05; }
     .score { margin: 1.15rem 0; border-radius: .65rem; background: rgba(255,255,255,.1); padding: 1rem; }
     .score b { display: block; font-size: 3.35rem; line-height: 1; }
@@ -180,8 +216,8 @@
     .snapshot-ring {
       width: 4.2rem; aspect-ratio: 1; border-radius: 999px;
       display: grid; place-items: center;
-      background: conic-gradient(var(--ring-color) var(--progress), #edf0f4 0);
-      box-shadow: inset 0 0 0 .5rem white;
+      background: conic-gradient(var(--ring-color) var(--progress), var(--bar-bg) 0);
+      box-shadow: inset 0 0 0 .5rem var(--surface);
       font-size: .82rem; font-weight: 900;
     }
     .snapshot-item small { color: var(--muted); font-size: .72rem; font-weight: 800; text-align: center; }
@@ -235,7 +271,8 @@
       caffeine_limit: 400,
       creatine_goal: 5,
       goal_weight: 68,
-      time_zone: browserTimeZone
+      time_zone: browserTimeZone,
+      theme: "auto"
     };
     const tabs = [
       ["today", "Today"], ["insights", "Insights"], ["reading", "Reading"], ["skills", "Skills"], ["ledger", "Ledger"],
@@ -260,11 +297,21 @@
     let active = "today";
     let selectedDate = todayKey();
     let periodDays = 7;
+    let obsidianWeekStart = weekStartKey(todayKey());
 
     function read(key, fallback) {
       try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
     }
     function write(key, value) { localStorage.setItem(key, JSON.stringify(value)); }
+    function resolvedTheme() {
+      const chosen = settings?.theme || "auto";
+      if (chosen === "dark" || chosen === "light") return chosen;
+      return window.matchMedia?.("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+    }
+    function applyTheme() {
+      document.body.dataset.theme = resolvedTheme();
+      document.querySelector('meta[name="theme-color"]')?.setAttribute("content", resolvedTheme() === "dark" ? "#090b10" : "#2f6fed");
+    }
     const skillTargets = {
       "Handstand hold": { unit: "sec", target: 60, color: "blue" },
       "Handstand pushups": { unit: "reps", target: 10, color: "coral" },
@@ -465,6 +512,27 @@
       base.setDate(base.getDate() + days);
       return todayKey(base);
     }
+    function addDaysKey(date, days) { return shiftDate(date, days); }
+    function weekStartKey(date = todayKey()) {
+      const base = new Date(`${date}T12:00:00`);
+      const day = base.getDay();
+      const offset = day === 0 ? -6 : 1 - day;
+      base.setDate(base.getDate() + offset);
+      return todayKey(base);
+    }
+    function weekRange(start = obsidianWeekStart) {
+      return Array.from({ length: 7 }, (_, i) => addDaysKey(start, i));
+    }
+    function entriesForDates(dates) {
+      const byDate = new Map(entries.map(e => [e.date, e]));
+      return dates.map(date => ensureEntry(byDate.get(date) || blank(date)));
+    }
+    function screenTotal(entry) {
+      if (entry.screen_time.total_minutes != null) return entry.screen_time.total_minutes;
+      const usefulLogged = entry.screen_time.useful_minutes != null;
+      const entertainmentLogged = entry.screen_time.entertainment_minutes != null;
+      return usefulLogged || entertainmentLogged ? (entry.screen_time.useful_minutes || 0) + (entry.screen_time.entertainment_minutes || 0) : null;
+    }
     function setSelectedDate(date) { selectedDate = date || todayKey(); render(); }
     function hasAny(entry) {
       return entry.weight_kg != null || entry.steps != null || entry.water_liters != null || entry.sleep_hours != null ||
@@ -498,6 +566,78 @@
       return { app: "reset-health-tracker", version: 3, exported_at: new Date().toISOString(), entries, settings, history, skillRecords };
     }
     function backupText() { return JSON.stringify(backupPayload(), null, 2); }
+    function escapeHtml(value) {
+      return `${value ?? ""}`.replace(/[&<>"']/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[char]));
+    }
+    function mdValue(value) { return value == null || value === "" ? "-" : `${value}`; }
+    function mdList(items) { return items.length ? items.map(item => `- ${item}`).join("\n") : "- None logged"; }
+    function loggedNumbers(values) { return values.filter(v => typeof v === "number" && Number.isFinite(v)); }
+    function sumLogged(values) {
+      const nums = loggedNumbers(values);
+      return nums.length ? nums.reduce((a,b) => a + b, 0) : null;
+    }
+    function avgLogged(values) {
+      const nums = loggedNumbers(values);
+      return nums.length ? Math.round(nums.reduce((a,b) => a + b, 0) / nums.length * 10) / 10 : null;
+    }
+    function notLogged(value, unit = "") {
+      return value == null || value === "" ? "Not logged" : `${value}${unit ? ` ${unit}` : ""}`;
+    }
+    function minutesLogged(value) { return value == null ? "Not logged" : minutesLabel(value); }
+    function tableText(value) { return `${value ?? "Not logged"}`.replace(/\|/g, "\\|").replace(/\n/g, " "); }
+    function obsidianDailyMarkdown(date = selectedDate) {
+      const e = current(date);
+      const workoutTotal = sum(e.workouts.map(w => w.minutes));
+      const calories = e.nutrition.tracked ? e.nutrition.calories : null;
+      const fuel = calorieStatus(calories, settings.calorie_goal);
+      const bible = e.bible.sessions.map(s => `${s.book || "Bible"}${s.chapters.length ? ` ${s.chapters.join(", ")}` : ""}${s.pages ? ` (${s.pages} pages)` : ""}${s.notes ? ` - ${s.notes}` : ""}`);
+      const reading = e.reading_detail.sessions.map(s => `${s.book}${s.pages ? ` - ${s.pages} pages` : ""}${s.minutes ? ` - ${s.minutes} min` : ""}${s.notes ? ` - ${s.notes}` : ""}`);
+      const workouts = e.workouts.map(w => `${w.type}: ${mdValue(w.minutes)} min${w.intensity ? `, ${w.intensity}` : ""}${w.notes ? ` - ${w.notes}` : ""}`);
+      const prs = skillRecords.filter(r => r.date === date).map(r => `${r.skill}: ${r.value} ${r.unit}${r.progression ? ` (${r.progression})` : ""}${r.notes ? ` - ${r.notes}` : ""}`);
+      return `---\ntype: daily-reset\ndate: ${e.date}\ntags: [reset-tracker, health]\n---\n\n# Reset Tracker - ${e.date}\n\n## Body\n- Calories: ${mdValue(calories)} / ${settings.calorie_goal} kcal (${fuel.label})\n- Protein: ${mdValue(e.nutrition.protein_g)} g\n- Carbs: ${mdValue(e.nutrition.carbs_g)} g\n- Fat: ${mdValue(e.nutrition.fat_g)} g\n- Fiber: ${mdValue(e.nutrition.fiber_g)} g\n- Weight: ${mdValue(e.weight_kg)} kg\n- Steps: ${mdValue(e.steps)}\n- Water: ${mdValue(e.water_liters)} L\n\n## Recovery\n- Sleep: ${mdValue(e.sleep_hours)} h\n- Sleep score: ${mdValue(e.sleep.score)}\n- Bedtime: ${mdValue(e.sleep.bedtime)}\n- Wake time: ${mdValue(e.sleep.wake_time)}\n\n## Mind\n- Mood: ${mdValue(e.mood_1_10)}/10\n- Energy: ${mdValue(e.energy_1_10)}/10\n- Stress: ${mdValue(e.mood_detail.stress_1_10)}/10\n- Focus: ${mdValue(e.mood_detail.focus_1_10)}/10\n- Motivation: ${mdValue(e.mood_detail.motivation_1_10)}/10\n\n## Workout\n- Total: ${workoutTotal || 0} min\n${mdList(workouts)}\n\n## Bible\n${mdList(bible)}\n\n## Reading\n${mdList(reading)}\n\n## Calisthenics PRs\n${mdList(prs)}\n\n## Screen Time\n- Useful/work: ${minutesLabel(e.screen_time.useful_minutes)}\n- Entertainment: ${minutesLabel(e.screen_time.entertainment_minutes)}\n- Total: ${minutesLabel(e.screen_time.total_minutes)}\n\n## Notes\n${e.notes || "-"}\n`;
+    }
+    function obsidianWeeklyMarkdown(start = obsidianWeekStart) {
+      const dates = weekRange(start);
+      const days = entriesForDates(dates);
+      const end = dates.at(-1);
+      const logged = days.filter(hasAny);
+      const weights = loggedNumbers(days.map(e => e.weight_kg));
+      const weightChange = weights.length >= 2 ? Math.round((weights.at(-1) - weights[0]) * 10) / 10 : null;
+      const totalSteps = sumLogged(days.map(e => e.steps));
+      const avgSteps = avgLogged(days.map(e => e.steps));
+      const workoutDays = days.filter(e => e.workouts.length || e.habits.workout.value != null || e.habits.workout.completed).length;
+      const hasWorkoutData = days.some(e => e.workouts.length || e.habits.workout.value != null || e.habits.workout.status !== "missing");
+      const avgSleep = avgLogged(days.map(e => e.sleep_hours));
+      const avgScreen = avgLogged(days.map(screenTotal));
+      const nutritionDays = days.filter(e => e.nutrition.tracked).length;
+      const creatineLogged = days.filter(e => e.habits.creatine.value != null || e.nutrition.creatine_g != null || e.habits.creatine.status !== "missing");
+      const creatineCompleted = creatineLogged.filter(e => e.habits.creatine.completed || (e.habits.creatine.value != null && e.habits.creatine.value >= settings.creatine_goal) || (e.nutrition.creatine_g != null && e.nutrition.creatine_g >= settings.creatine_goal)).length;
+      const bibleDays = days.filter(e => e.bible.sessions.length || e.bible.total_chapters != null).length;
+      const bibleTracked = days.some(e => e.bible.sessions.length || e.bible.total_chapters != null);
+      const summary = [];
+      summary.push(`Logged data covers ${logged.length} of 7 days in this week.`);
+      if (nutritionDays) summary.push(`Nutrition was logged on ${nutritionDays} of 7 days.`);
+      if (hasWorkoutData) summary.push(`Workouts were logged on ${workoutDays} of 7 days.`);
+      if (avgSleep != null) summary.push(`Average logged sleep duration was ${avgSleep} hours.`);
+      if (avgScreen != null) summary.push(`Average logged screen time was ${minutesLabel(avgScreen)}.`);
+      if (bibleTracked) summary.push(`Bible reading was logged on ${bibleDays} of 7 days.`);
+      if (summary.length === 1 && !logged.length) summary[0] = "No logged data is available for this week.";
+      const dailyRows = days.map(e => {
+        const calories = e.nutrition.tracked ? e.nutrition.calories : null;
+        const workout = e.workouts.length ? `${sum(e.workouts.map(w => w.minutes))} min` : e.habits.workout.value != null ? `${e.habits.workout.value} min` : null;
+        const bible = e.bible.sessions.length ? e.bible.sessions.map(s => `${s.book}${s.chapters.length ? ` ${s.chapters.join(",")}` : ""}`).join("; ") : null;
+        return `| ${e.date} | ${tableText(notLogged(e.weight_kg, "kg"))} | ${tableText(notLogged(e.steps))} | ${tableText(notLogged(calories, "kcal"))} | ${tableText(notLogged(e.nutrition.protein_g, "g"))} | ${tableText(workout || "Not logged")} | ${tableText(notLogged(e.sleep_hours, "h"))} | ${tableText(minutesLogged(screenTotal(e)))} | ${tableText(bible || "Not logged")} |`;
+      }).join("\n");
+      const patterns = [];
+      const workoutEnergy = compareAvg(days, e => sum(e.workouts.map(w => w.minutes)) > 0, e => e.energy_1_10);
+      const sleepEnergy = compareAvg(days, e => (e.sleep.score || 0) >= 80 || (e.sleep_hours || 0) >= settings.sleep_goal, e => e.energy_1_10);
+      const screenMood = compareAvg(days, e => (e.screen_time.entertainment_minutes || 0) <= 90, e => e.mood_1_10);
+      if (workoutEnergy !== "-") patterns.push(`- Logged data suggests workout days may relate to energy differently than non-workout days: ${workoutEnergy}.`);
+      if (sleepEnergy !== "-") patterns.push(`- Logged data suggests better sleep may relate to energy differently: ${sleepEnergy}.`);
+      if (screenMood !== "-") patterns.push(`- Logged data suggests lower entertainment screen time may relate to mood differently: ${screenMood}.`);
+      if (!patterns.length) patterns.push("- Not enough comparable logged data to identify patterns this week.");
+      return `---\ntype: Health Review\nweek_start: ${start}\nweek_end: ${end}\nsource: Life Tracking App\nstatus: Complete\n---\n\n# Health Review - ${start} to ${end}\n\n## Generated Summary\n${summary.map(line => `- ${line}`).join("\n")}\n\n## Overview\n- Average weight: ${notLogged(avgLogged(days.map(e => e.weight_kg)), "kg")}\n- Weight change from first logged weight to last logged weight: ${notLogged(weightChange, "kg")}\n- Total steps: ${notLogged(totalSteps)}\n- Average steps: ${notLogged(avgSteps)}\n- Workouts completed: ${hasWorkoutData ? `${workoutDays} of 7 days` : "Not logged"}\n- Average sleep duration: ${notLogged(avgSleep, "h")}\n- Average screen time: ${avgScreen == null ? "Not logged" : minutesLabel(avgScreen)}\n- Nutrition logging completeness: ${nutritionDays} of 7 days\n- Creatine/supplement consistency: ${creatineLogged.length ? `${creatineCompleted} of ${creatineLogged.length} logged days` : "Not logged"}\n- Bible reading days: ${bibleTracked ? `${bibleDays} of 7 days` : "Not logged"}\n\n## Daily Breakdown\n| Day | Weight | Steps | Calories | Protein | Workout | Sleep | Screen Time | Bible |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n${dailyRows}\n\n## Patterns Noticed From Data\n${patterns.join("\n")}\n\n## My Reflection\n- What went well?\n- \n- What felt difficult?\n- \n- What did I learn?\n- \n- What do I want to adjust next week?\n- \n\n## Next Week Focus\n- \n- \n- \n`;
+    }
     function section(eyebrow, title, copy) {
       return `<p class="eyebrow">${eyebrow}</p><h2>${title}</h2><p class="section-copy">${copy}</p>`;
     }
@@ -996,13 +1136,42 @@ ${sampleJson()}`;
           <div class="score"><small>Consistency score</small><b>${consistency}%</b></div>
           <div class="share-grid">${shareStat("Days logged", `${data.loggedDays}/7`)}${shareStat("Workouts", data.workouts.length)}${shareStat("Bible", `${data.bibleChapters} ch`)}${shareStat("Avg protein", data.avgProtein == null ? "-" : `${data.avgProtein}g`)}${shareStat("Sleep score", data.avgSleepScore ?? "-")}${shareStat("Useful screen", minutesLabel(data.useful))}</div>
           <div class="share-bottom"><div><small class="gold">Weekly Win</small><p>${data.bibleChapters || data.workoutMinutes ? "You kept investing in the inputs." : "You kept the signal alive."}</p></div><div><small class="gold">Focus Next Week</small><p>${data.entertainment > data.useful ? "Tilt screen time toward useful blocks." : "Protect sleep and repeat the basics."}</p></div><div class="footer">Progress over perfection.</div></div>
-        </div></div>`;
+        </div></div>
+        <article class="card" style="margin-top:1rem">
+          <strong>Export Weekly Review for Obsidian</strong>
+          <p class="section-copy" style="margin-top:.35rem">Use this as a readable archive copy. The app stays your structured tracker; Obsidian gets the review note.</p>
+          <div class="grid two" style="margin-top:.85rem">
+            <label class="field" style="box-shadow:none"><span>Week start</span><input id="obsidianWeekStart" type="date" value="${obsidianWeekStart}" onchange="setObsidianWeekStart(this.value)"></label>
+            <button class="btn dark" onclick="copyObsidian('weekly')">Copy weekly review</button>
+          </div>
+          <button class="btn soft" style="margin-top:.75rem;width:100%" onclick="copyObsidian('daily')">Copy selected-day daily note</button>
+          <textarea id="obsidianNote" class="backupbox" style="margin-top:.85rem;min-height:18rem">${escapeHtml(obsidianWeeklyMarkdown(obsidianWeekStart))}</textarea>
+          <div id="obsidianStatus"></div>
+        </article>`;
     }
     function shareStat(label, value) { return `<div class="share-stat"><small>${label}</small><b>${value}</b></div>`; }
+    function setObsidianWeekStart(value) {
+      obsidianWeekStart = value || weekStartKey(todayKey());
+      const box = document.getElementById("obsidianNote");
+      if (box) box.value = obsidianWeeklyMarkdown(obsidianWeekStart);
+    }
+    async function copyObsidian(kind) {
+      const note = kind === "daily" ? obsidianDailyMarkdown(selectedDate) : obsidianWeeklyMarkdown(obsidianWeekStart);
+      const box = document.getElementById("obsidianNote");
+      const status = document.getElementById("obsidianStatus");
+      if (box) box.value = note;
+      try {
+        await navigator.clipboard.writeText(note);
+        status.innerHTML = `<div class="status success" style="margin-top:.8rem">${kind === "daily" ? "Daily" : "Weekly"} Obsidian note copied.</div>`;
+      } catch {
+        box?.select();
+        status.innerHTML = `<div class="status warn" style="margin-top:.8rem">Copy failed. The note is selected so you can copy it manually.</div>`;
+      }
+    }
     function renderSettings() {
       const fields = [["calorie_goal","Calorie goal","1"],["protein_goal","Protein goal","1"],["step_goal","Step goal","1"],["water_goal","Water goal","0.1"],["sleep_goal","Sleep goal","0.1"],["caffeine_limit","Caffeine limit","1"],["creatine_goal","Creatine goal","0.1"],["goal_weight","Goal weight","0.1"]];
       return `${section("Goals", "Personal targets and data", "Stored locally in this browser. Back up before clearing cache or reinstalling.")}
-        <div class="grid two" style="margin-top:1rem">${fields.map(([id,label,step]) => inputField(label, id, settings[id], step)).join("")}<label class="field"><span>Timezone</span><input id="time_zone" value="${settings.time_zone || browserTimeZone}"></label></div>
+        <div class="grid two" style="margin-top:1rem">${fields.map(([id,label,step]) => inputField(label, id, settings[id], step)).join("")}<label class="field"><span>Timezone</span><input id="time_zone" value="${settings.time_zone || browserTimeZone}"></label><label class="field"><span>Theme</span><select id="theme"><option value="auto" ${settings.theme === "auto" ? "selected" : ""}>Auto</option><option value="light" ${settings.theme === "light" ? "selected" : ""}>Light</option><option value="dark" ${settings.theme === "dark" ? "selected" : ""}>Dark</option></select></label></div>
         <button class="btn" style="margin-top:.9rem;width:100%" onclick="saveGoals()">Save goals</button><div id="goalStatus"></div>
         <article class="card" style="margin-top:1.1rem">
           <strong>Data backup</strong><p class="section-copy" style="margin-top:.35rem">Use this before clearing Safari data, reinstalling the Home Screen app, or testing a new link.</p>
@@ -1015,9 +1184,10 @@ ${sampleJson()}`;
     }
     function saveGoals() {
       const next = {};
-      Object.keys(defaultSettings).forEach(k => next[k] = k === "time_zone" ? str(k) : Number(document.getElementById(k)?.value));
+      Object.keys(defaultSettings).forEach(k => next[k] = (k === "time_zone" || k === "theme") ? str(k) : Number(document.getElementById(k)?.value));
       settings = { ...defaultSettings, ...next };
       write(keys.settings, settings);
+      applyTheme();
       document.getElementById("goalStatus").innerHTML = `<div class="status success" style="margin-top:.8rem">Goals saved.</div>`;
     }
     async function copyBackup() {
@@ -1070,15 +1240,24 @@ ${sampleJson()}`;
       document.getElementById("nav").innerHTML = tabs.map(([id, label]) => `<button title="${label}" class="${active === id ? "active" : ""}" onclick="active='${id}';render()" aria-label="${label}"><span class="nav-icon">${tabIcons[id] || ""}</span><span class="sr-only">${label}</span></button>`).join("");
     }
     function render() {
+      applyTheme();
       document.getElementById("todayLabel").textContent = pretty(todayKey());
       document.getElementById("dayCount").textContent = `${entries.length} days`;
       renderNav();
       const map = { today: renderToday, chat: renderChat, log: renderLog, import: renderImport, reading: renderReading, skills: renderSkills, ledger: renderLedger, insights: renderInsights, share: renderShare, settings: renderSettings };
       document.getElementById("screen").innerHTML = map[active]();
     }
+    applyTheme();
+    window.matchMedia?.("(prefers-color-scheme: dark)").addEventListener?.("change", () => {
+      if ((settings.theme || "auto") === "auto") render();
+    });
     render();
     if ("serviceWorker" in navigator && location.protocol !== "file:") {
-      window.addEventListener("load", () => navigator.serviceWorker.register("./sw.js").catch(() => {}));
+      if (navigator.serviceWorker.getRegistrations) {
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+          registrations.forEach((registration) => registration.unregister());
+        }).catch(() => {});
+      }
     }
   </script>
 </body>
