@@ -148,20 +148,18 @@ input:focus, select:focus, textarea:focus {
 .icon-food::before { width: 18px; height: 18px; border: 2px solid currentColor; border-radius: 5px; }
 .icon-food::after { width: 2px; height: 18px; background: currentColor; transform: translateX(5px); opacity: .65; }
 .icon-move::before {
-  width: 20px;
-  height: 20px;
-  border: 2px solid currentColor;
-  border-left-color: transparent;
+  inset: 1px;
   border-radius: 50%;
-  transform: rotate(42deg);
+  background: conic-gradient(currentColor 0deg 292deg, transparent 292deg 360deg);
+  -webkit-mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
+  mask: radial-gradient(farthest-side, transparent calc(100% - 3px), #000 calc(100% - 2px));
 }
 .icon-move::after {
-  width: 10px;
-  height: 10px;
-  border: 2px solid currentColor;
-  border-bottom-color: transparent;
+  width: 5px;
+  height: 5px;
   border-radius: 50%;
-  transform: translate(5px,-5px) rotate(-18deg);
+  background: currentColor;
+  transform: translate(7px,-6px);
 }
 .icon-sleep::before {
   width: 20px;
