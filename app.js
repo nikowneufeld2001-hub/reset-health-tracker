@@ -308,6 +308,22 @@ function pageHero(id, title, subtitle) {
     </div>
   </section>`;
 }
+function dashboardDateControls() {
+  return `<div class="signal-controls" aria-label="Date controls">
+    <div class="signal-date-row">
+      <button class="date-nav-button" type="button" data-date-shift="-1" aria-label="Previous day">Prev</button>
+      <label class="date-pill" for="viewDate">
+        <span>Date</span>
+        <input id="viewDate" type="date" value="${selectedDate}">
+      </label>
+      <button class="date-nav-button" type="button" data-date-shift="1" aria-label="Next day">Next</button>
+    </div>
+    <div class="signal-actions">
+      <button class="date-today-button" type="button" data-today>Today</button>
+      <button class="date-delete-button" type="button" data-delete-day="${selectedDate}">Delete Day</button>
+    </div>
+  </div>`;
+}
 function input(name, label, value, type = "text", step = "1") {
   return `<div class="form-row"><label for="${name}">${escapeHTML(label)}</label><input id="${name}" name="${name}" type="${type}" ${type === "number" ? `step="${step}"` : ""} value="${escapeHTML(value ?? "")}"></div>`;
 }
@@ -354,13 +370,7 @@ function renderDashboard() {
         </div>
       </div>
       <div class="summary-stack">
-        <div class="date-strip">
-          <div class="field date-field"><label for="viewDate">Date</label><input id="viewDate" type="date" value="${selectedDate}"></div>
-          <button class="soft-button" type="button" data-date-shift="-1">Prev</button>
-          <button class="primary-button" type="button" data-today>Today</button>
-          <button class="soft-button" type="button" data-date-shift="1">Next</button>
-        </div>
-        <div class="form-actions compact-actions"><button class="soft-button danger-button" type="button" data-delete-day="${selectedDate}">Delete Day</button></div>
+        ${dashboardDateControls()}
         <div class="pill-row">
           <span class="pill">${latestWeightChange()}</span>
           <span class="pill">7d sleep ${fmt(average(week.map((x) => x.sleepHours)),1)} h</span>

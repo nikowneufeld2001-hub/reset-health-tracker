@@ -102,14 +102,14 @@ input:focus, select:focus, textarea:focus {
 
 .brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
 .brand-logo {
-  width: 46px;
-  height: 46px;
+  width: 50px;
+  height: 50px;
   border: 1px solid rgba(33,119,242,.10);
   border-radius: 16px;
   background: #fff;
   box-shadow: 0 12px 32px rgba(33,119,242,.14);
   flex: 0 0 auto;
-  object-fit: cover;
+  object-fit: contain;
 }
 .brand p, .eyebrow {
   margin: 0 0 2px;
@@ -228,6 +228,64 @@ input:focus, select:focus, textarea:focus {
 .date-strip { display: grid; grid-template-columns: minmax(138px, 178px) auto auto auto; align-items: end; gap: 10px; }
 .date-field { max-width: 178px; }
 .date-field input { min-height: 44px; padding-inline: 12px; border-radius: 999px; font-weight: 800; }
+.signal-controls {
+  display: grid;
+  gap: 10px;
+  margin-top: 2px;
+}
+.signal-date-row {
+  display: grid;
+  grid-template-columns: 70px minmax(0, 1fr) 70px;
+  align-items: stretch;
+  gap: 8px;
+}
+.date-pill {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  min-width: 0;
+}
+.date-pill span {
+  color: var(--muted);
+  font-size: 12px;
+  font-weight: 850;
+}
+.date-pill input {
+  min-height: 42px;
+  padding: 9px 12px;
+  border-radius: 999px;
+  text-align: center;
+  font-size: 15px;
+  font-weight: 850;
+}
+.date-nav-button,
+.date-today-button,
+.date-delete-button {
+  min-height: 42px;
+  border-radius: 999px;
+  padding: 0 12px;
+  border: 1px solid var(--line);
+  background: color-mix(in srgb, var(--solid) 76%, transparent);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 850;
+}
+.date-today-button {
+  background: linear-gradient(135deg, var(--blue), #29a8ff);
+  color: #fff;
+  border-color: transparent;
+  box-shadow: 0 12px 26px rgba(33,119,242,.22);
+}
+.date-delete-button {
+  color: var(--coral);
+  border-color: rgba(255,107,107,.28);
+  background: rgba(255,107,107,.09);
+}
+.signal-actions {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+}
 label { display: block; margin: 0 0 7px; color: var(--muted); font-size: 13px; font-weight: 760; }
 .primary-button, .soft-button, .text-button {
   min-height: 48px;
@@ -386,7 +444,7 @@ tr:last-child td { border-bottom: 0; }
 @media (max-width: 520px) {
   .app { padding-inline: 14px; }
   .brand h1 { font-size: 26px; }
-  .brand-logo { width: 42px; height: 42px; border-radius: 14px; }
+  .brand-logo { width: 50px; height: 50px; border-radius: 16px; }
   .date-strip { grid-template-columns: minmax(138px, 1fr) 1fr; }
   .date-strip .field { grid-column: auto; }
   .metric-grid { gap: 10px; }
