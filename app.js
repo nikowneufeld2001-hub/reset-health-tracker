@@ -108,6 +108,13 @@ function md(value, unit = "", digits = 0) {
   const n = num(value);
   return n === null ? "Not logged" : `${fmt(n, digits)}${unit ? ` ${unit}` : ""}`;
 }
+function calorieStatus(calories = dayData(selectedDate).calories) {
+  const c = num(calories), goal = num(settings.calorieGoal);
+  if (c === null || !goal) return "Calories not logged";
+  const diff = Math.round(goal - c);
+  if (diff >= 0) return `${fmt(diff)} kcal under target`;
+  return `${fmt(Math.abs(diff))} kcal over target`;
+}
 
 function updateEntry(date, patch) {
   entries[date] = mergeEntry(getEntry(date), patch);
@@ -115,15 +122,34 @@ function updateEntry(date, patch) {
   syncBookStatusesFromEntries();
   renderAll();
 }
+function replaceEntryFields(date, patch) {
+  entries[date] = mergeEntryWithOptions(getEntry(date), patch, { replaceArrays: true });
+  saveEntries();
+  syncBookStatusesFromEntries();
+  renderAll();
+}
 function mergeEntry(base, patch) {
+  return mergeEntryWithOptions(base, patch, { replaceArrays: false });
+}
+function mergeEntryWithOptions(base, patch, options = {}) {
   const next = { ...base };
   Object.entries(patch).forEach(([key, value]) => {
     if (value === undefined || value === null || value === "") return;
-    if (Array.isArray(value)) next[key] = [...listify(next[key]), ...value].filter(Boolean);
-    else if (typeof value === "object") next[key] = { ...(typeof next[key] === "object" && !Array.isArray(next[key]) ? next[key] : {}), ...value };
+    if (Array.isArray(value)) next[key] = options.replaceArrays ? value.filter(Boolean) : [...listify(next[key]), ...value].filter(Boolean);
+    else if (typeof value === "object") next[key] = mergeEntryWithOptions(typeof next[key] === "object" && !Array.isArray(next[key]) ? next[key] : {}, value, options);
     else next[key] = value;
   });
   return next;
+}
+
+function deleteEntry(date) {
+  if (!entries[date]) return toast("No saved day to delete");
+  if (!confirm(`Delete all saved data for ${formatDate(date)}?`)) return;
+  delete entries[date];
+  saveEntries();
+  syncBookStatusesFromEntries();
+  renderAll();
+  toast("Day deleted");
 }
 
 function dayData(date = selectedDate) {
@@ -215,11 +241,12 @@ function normalizeStatus(value) {
 }
 
 function syncBookStatusesFromEntries() {
-  const next = { ...bookStatuses };
+  const previous = bookStatuses || {};
+  const next = {};
   loggedDates().forEach((date) => dayData(date).reading.forEach((book) => {
     const key = cleanKey(book.title);
     if (!key) return;
-    const existing = next[key] || {};
+    const existing = next[key] || previous[key] || {};
     next[key] = {
       title: existing.title || book.title,
       firstSeen: existing.firstSeen || date,
@@ -261,11 +288,20 @@ function metricCard({ title, value, unit, goal, tone = "blue", lowerLimit = fals
     ${detail ? `<span class="small-text">${escapeHTML(detail)}</span>` : ""}
   </article>`;
 }
+function metricActionCard({ title, value, unit, goal, tone = "blue", detail = "", panel }) {
+  const digits = value && Math.abs(value) < 10 ? 1 : 0;
+  return `<button class="metric-card metric-action" type="button" data-reading-panel="${escapeHTML(panel)}">
+    <div class="metric-head"><span class="metric-title">${escapeHTML(title)}</span>${ring(value, goal, tone)}</div>
+    <div><p class="metric-value">${fmt(value, digits)}</p><span class="metric-unit">${escapeHTML(unit)}</span></div>
+    ${bar(value, goal, tone)}
+    ${detail ? `<span class="small-text">${escapeHTML(detail)}</span>` : ""}
+  </button>`;
+}
 function pageHero(id, title, subtitle) {
   return `<section class="hero-card">
     <div class="hero-content"><p class="eyebrow">${escapeHTML(title)}</p><h2 id="${id}">${escapeHTML(title)}</h2><p class="subtitle">${escapeHTML(subtitle)}</p></div>
     <div class="date-strip">
-      <div class="field"><label for="${id}Date">View date</label><input id="${id}Date" type="date" value="${selectedDate}" data-date-input></div>
+      <div class="field date-field"><label for="${id}Date">Date</label><input id="${id}Date" type="date" value="${selectedDate}" data-date-input></div>
       <button class="soft-button" type="button" data-date-shift="-1">Prev</button>
       <button class="primary-button" type="button" data-today>Today</button>
       <button class="soft-button" type="button" data-date-shift="1">Next</button>
@@ -304,7 +340,7 @@ function renderDashboard() {
   const week = datesBack(7).map(dayData);
   const bible = bibleSummary();
   const books = readingSummary();
-  const calorieDetail = d.calories === null ? "Not logged" : d.calories <= settings.calorieGoal ? `${fmt(settings.calorieGoal - d.calories)} kcal left` : `${fmt(d.calories - settings.calorieGoal)} kcal over`;
+  const calorieDetail = calorieStatus(d.calories);
   document.getElementById("dashboardView").innerHTML = `
     <section class="hero-card">
       <div class="hero-content">
@@ -319,11 +355,12 @@ function renderDashboard() {
       </div>
       <div class="summary-stack">
         <div class="date-strip">
-          <div class="field"><label for="viewDate">View date</label><input id="viewDate" type="date" value="${selectedDate}"></div>
+          <div class="field date-field"><label for="viewDate">Date</label><input id="viewDate" type="date" value="${selectedDate}"></div>
           <button class="soft-button" type="button" data-date-shift="-1">Prev</button>
           <button class="primary-button" type="button" data-today>Today</button>
           <button class="soft-button" type="button" data-date-shift="1">Next</button>
         </div>
+        <div class="form-actions compact-actions"><button class="soft-button danger-button" type="button" data-delete-day="${selectedDate}">Delete Day</button></div>
         <div class="pill-row">
           <span class="pill">${latestWeightChange()}</span>
           <span class="pill">7d sleep ${fmt(average(week.map((x) => x.sleepHours)),1)} h</span>
@@ -360,7 +397,7 @@ function renderNutrition() {
   document.getElementById("nutritionView").innerHTML = `
     ${pageHero("nutritionTitle","Nutrition","Calories, protein, hydration, supplements, and weight.")}
     <div class="metric-grid">
-      ${metricCard({ title:"Calories", value:d.calories, unit:"kcal", goal:settings.calorieGoal, tone:"blue", lowerLimit:true })}
+      ${metricCard({ title:"Calories", value:d.calories, unit:"kcal", goal:settings.calorieGoal, tone:"blue", lowerLimit:true, detail:calorieStatus(d.calories) })}
       ${metricCard({ title:"Protein", value:d.protein, unit:"g", goal:settings.proteinGoal, tone:"mint" })}
       ${metricCard({ title:"Water", value:d.water, unit:"L", goal:settings.waterGoal, tone:"cyan" })}
       ${metricCard({ title:"Weight", value:d.weight, unit:"kg", goal:settings.weightGoal || d.weight, tone:"violet" })}
@@ -434,16 +471,17 @@ function renderReading() {
     <div class="metric-grid">
       ${metricCard({ title:"Bible Year", value:bible.yearChapters, unit:"chapters", goal:TOTAL_BIBLE_CHAPTERS, tone:"violet", detail:`${bible.yearPercent}% of Bible` })}
       ${metricCard({ title:"Bible Month", value:bible.monthChapters, unit:"chapters", goal:settings.bibleChaptersGoal * 4, tone:"blue" })}
-      ${metricCard({ title:"Current Books", value:books.current.length, unit:"books", goal:Math.max(1, books.current.length), tone:"cyan" })}
-      ${metricCard({ title:"Finished", value:books.finishedThisMonth.length, unit:"this month", goal:Math.max(1, books.finishedThisMonth.length), tone:"mint" })}
+      ${metricActionCard({ title:"Current Books", value:books.current.length, unit:"books", goal:Math.max(1, books.current.length), tone:"cyan", detail:"Tap to view progress", panel:"current" })}
+      ${metricActionCard({ title:"Finished", value:books.finished.length, unit:"all time", goal:Math.max(1, books.finished.length), tone:"mint", detail:`${books.finishedThisMonth.length} this month`, panel:"finished" })}
     </div>
     <details class="detail-card" open><summary>Bible Summary</summary><div class="detail-body">${readingSnapshotHTML(bible, books)}</div></details>
     <details class="detail-card" open><summary>Log Reading</summary><div class="detail-body"><form id="readingForm" class="form-grid">
       ${select("bible_book","Bible book","",["",...BIBLE_BOOKS.map((x) => x[0])])}${input("bible_chapters","Bible chapters","","text")}${input("book_title","Other book","","text")}${input("book_pages","Pages read","","number")}${input("book_chapters","Book chapters","","text")}${select("book_status","Book status","current",["current","finished","gave-up"])}
       <div class="form-actions"><button class="primary-button" type="submit">Save Reading</button></div>
     </form></div></details>
-    <section class="panel"><div class="panel-head"><h3>Currently Reading</h3><span class="status-chip">${books.current.length}</span></div><div class="list">${bookListHTML(books.current, true)}</div></section>
-    <section class="panel"><div class="panel-head"><h3>Book History</h3><span class="status-chip">${books.all.length}</span></div><div class="list">${bookListHTML(books.all, false)}</div></section>
+    <details class="detail-card" id="reading-current-details"><summary>Currently Reading</summary><div class="detail-body"><div class="list">${bookListHTML(books.current, true, "current")}</div></div></details>
+    <details class="detail-card" id="reading-finished-details"><summary>Finished Books</summary><div class="detail-body"><div class="list">${bookListHTML(books.finished, false, "finished")}</div></div></details>
+    <section class="panel"><div class="panel-head"><h3>Book History</h3><span class="status-chip">${books.all.length}</span></div><div class="list">${bookListHTML(books.all, false, "history")}</div></section>
     <section class="panel"><div class="panel-head"><h3>Reading Log</h3><span class="status-chip">${d.reading.length + d.bible.length} today</span></div>${readingLogTableHTML()}</section>`;
 }
 
@@ -489,7 +527,7 @@ function renderLedger() {
     ${pageHero("ledgerTitle","Ledger","Every saved day in one place.")}
     <section class="panel">${dates.length ? `<div class="list">${dates.map((date) => {
       const d = dayData(date);
-      return `<button class="list-row" type="button" data-open-date="${date}"><div><div class="list-title">${formatDate(date)}</div><div class="list-subtitle">${fmt(d.calories)} kcal, ${fmt(d.steps)} steps, ${fmt(d.sleepHours,1)} h sleep, ${d.bible.length + d.reading.length} reading sessions</div></div><span class="status-chip">Open</span></button>`;
+      return `<article class="list-row"><button class="text-button ledger-open" type="button" data-open-date="${date}"><div><div class="list-title">${formatDate(date)}</div><div class="list-subtitle">${fmt(d.calories)} kcal, ${fmt(d.steps)} steps, ${fmt(d.sleepHours,1)} h sleep, ${d.bible.length + d.reading.length} reading sessions</div></div></button><div class="ledger-actions"><button class="status-chip" type="button" data-open-date="${date}">Open</button><button class="status-chip danger-chip" type="button" data-delete-day="${date}">Delete</button></div></article>`;
     }).join("")}</div>` : `<div class="empty">No saved days yet.</div>`}</section>`;
 }
 function renderShare() {
@@ -569,11 +607,35 @@ function readingSnapshotHTML(bible, books) {
 function snapshotRow(title, subtitle, chip) {
   return `<article class="list-row"><div><div class="list-title">${escapeHTML(title)}</div><div class="list-subtitle">${escapeHTML(subtitle)}</div></div><span class="status-chip">${escapeHTML(chip)}</span></article>`;
 }
-function bookListHTML(books, controls) {
+function bookProgress(title) {
+  const key = cleanKey(title);
+  const sessions = [];
+  loggedDates().forEach((date) => dayData(date).reading.forEach((item) => {
+    if (cleanKey(item.title) === key) sessions.push({ date, ...item });
+  }));
+  return {
+    pages: total(sessions.map((item) => item.pages)),
+    latestChapters: [...sessions].reverse().find((item) => item.chapters)?.chapters || "",
+    sessions: sessions.length,
+    lastDate: sessions.length ? sessions[sessions.length - 1].date : "",
+    firstDate: sessions.length ? sessions[0].date : ""
+  };
+}
+function bookListHTML(books, controls, mode = "history") {
   if (!books.length) return `<div class="empty">No books here yet.</div>`;
   return books.map((book) => {
     const key = cleanKey(book.title);
-    return `<article class="list-row"><div><div class="list-title">${escapeHTML(book.title)}</div><div class="list-subtitle">${escapeHTML(book.category || "Other")} - first ${escapeHTML(book.firstSeen || "-")} - last ${escapeHTML(book.lastSeen || "-")}</div></div><div><span class="status-chip ${normalizeStatus(book.status)}">${escapeHTML(normalizeStatus(book.status))}</span>${controls ? `<div class="form-actions"><button class="text-button" type="button" data-book-status="${escapeHTML(key)}" data-status="finished">Finished</button><button class="text-button" type="button" data-book-status="${escapeHTML(key)}" data-status="gave-up">Gave up</button></div>` : ""}</div></article>`;
+    const progress = bookProgress(book.title);
+    const progressText = [
+      progress.pages ? `${fmt(progress.pages)} pages logged` : "",
+      progress.latestChapters ? `latest ch. ${progress.latestChapters}` : "",
+      progress.sessions ? `${progress.sessions} sessions` : ""
+    ].filter(Boolean).join(" - ");
+    const finishedText = normalizeStatus(book.status) === "finished" ? `finished ${escapeHTML(book.statusDate || book.lastSeen || "date not logged")}` : `last read ${escapeHTML(book.lastSeen || "-")}`;
+    const subtitle = mode === "finished"
+      ? `${escapeHTML(book.category || "Other")} - ${finishedText}${progress.pages ? ` - ${fmt(progress.pages)} pages tracked` : ""}`
+      : `${escapeHTML(book.category || "Other")} - ${progressText || `first ${escapeHTML(book.firstSeen || "-")} - last ${escapeHTML(book.lastSeen || "-")}`}`;
+    return `<article class="list-row"><div><div class="list-title">${escapeHTML(book.title)}</div><div class="list-subtitle">${subtitle}</div></div><div><span class="status-chip ${normalizeStatus(book.status)}">${escapeHTML(normalizeStatus(book.status))}</span>${controls ? `<div class="form-actions"><button class="text-button" type="button" data-book-status="${escapeHTML(key)}" data-status="finished">Finished</button><button class="text-button" type="button" data-book-status="${escapeHTML(key)}" data-status="gave-up">Gave up</button></div>` : ""}</div></article>`;
   }).join("");
 }
 function readingLogTableHTML() {
@@ -610,9 +672,27 @@ function importPayload(payload) {
   if (!records.length) throw new Error("No dated records found.");
   records.forEach((record) => {
     const normalized = normalizeImportedRecord(record);
-    updateEntry(normalized.date, normalized.patch);
+    replaceEntryFields(normalized.date, normalized.patch);
   });
   toast(`Imported ${records.length} record${records.length === 1 ? "" : "s"}`);
+}
+function parseImportText(text) {
+  const raw = String(text || "").trim();
+  if (!raw) throw new Error("Paste JSON first.");
+  const stripped = raw.replace(/^```(?:json)?/i, "").replace(/```$/i, "").trim();
+  try { return JSON.parse(stripped); } catch {}
+  const firstObject = stripped.indexOf("{");
+  const firstArray = stripped.indexOf("[");
+  const starts = [firstObject, firstArray].filter((index) => index >= 0);
+  if (!starts.length) throw new Error("No JSON object found.");
+  const start = Math.min(...starts);
+  const endObject = stripped.lastIndexOf("}");
+  const endArray = stripped.lastIndexOf("]");
+  const end = Math.max(endObject, endArray);
+  if (end <= start) throw new Error("JSON looks incomplete.");
+  try { return JSON.parse(stripped.slice(start, end + 1)); } catch {
+    throw new Error("JSON could not be read. Ask ChatGPT for raw JSON only.");
+  }
 }
 function recordsFromPayload(payload) {
   if (Array.isArray(payload)) return payload;
@@ -625,11 +705,41 @@ function normalizeImportedRecord(record) {
   delete patch.date; delete patch.day; delete patch.entry_date;
   if (record.nutrition) Object.assign(patch, record.nutrition);
   if (record.sleep && typeof record.sleep === "object") Object.assign(patch, { sleep_hours:firstNumber(record.sleep.hours, record.sleep.duration), sleep_score:firstNumber(record.sleep.score), bed_time:record.sleep.bed_time || record.sleep.bedtime || "", wake_time:record.sleep.wake_time || record.sleep.waketime || "" });
-  if (record.screen_time && typeof record.screen_time === "object") patch.time = { total:firstNumber(record.screen_time.total, record.screen_time.minutes), useful:firstNumber(record.screen_time.useful, record.screen_time.productive, record.screen_time.work), entertainment:firstNumber(record.screen_time.entertainment, record.screen_time.recreation, record.screen_time.social) };
-  patch.workouts = normalizeWorkouts(record.workouts || record.workout);
-  patch.bible = normalizeBible(record.bible || record.bible_reading || record.scripture);
-  patch.reading = normalizeReading(record.reading || record.reading_detail || record.books || record.book);
+  if (record.screen_time && typeof record.screen_time === "object") patch.time = deriveScreenTime(record.screen_time);
+  if ("workout" in record) delete patch.workout;
+  if ("bible_reading" in record) delete patch.bible_reading;
+  if ("scripture" in record) delete patch.scripture;
+  if ("reading_detail" in record) delete patch.reading_detail;
+  if ("book" in record) delete patch.book;
+  if ("books" in record) delete patch.books;
+  if ("workouts" in record || "workout" in record) {
+    patch.workouts = normalizeWorkouts(record.workouts || record.workout);
+    const importedWorkoutMinutes = total(patch.workouts.map((workout) => workout.minutes));
+    patch.workout_minutes = importedWorkoutMinutes;
+    patch.workout_type = patch.workouts.map((workout) => workout.type).filter(Boolean).join(", ");
+  }
+  if ("bible" in record || "bible_reading" in record || "scripture" in record) patch.bible = normalizeBible(record.bible || record.bible_reading || record.scripture);
+  if ("reading" in record || "reading_detail" in record || "books" in record || "book" in record) patch.reading = normalizeReading(record.reading || record.reading_detail || record.books || record.book);
   return { date, patch };
+}
+function deriveScreenTime(screen) {
+  const apps = listify(screen.apps || screen.breakdown || screen.app_breakdown).filter(Boolean);
+  if (apps.length) {
+    const minutesFor = (item) => firstNumber(item.minutes, item.time, item.duration) || 0;
+    const useful = apps.filter((item) => cleanKey(item.name || item.app || item.title).includes("whatsapp") || cleanKey(item.name || item.app || item.title).includes("whats app")).reduce((sum, item) => sum + minutesFor(item), 0);
+    const entertainment = apps.filter((item) => !(cleanKey(item.name || item.app || item.title).includes("whatsapp") || cleanKey(item.name || item.app || item.title).includes("whats app"))).reduce((sum, item) => sum + minutesFor(item), 0);
+    return {
+      total: firstNumber(screen.total, screen.minutes) ?? useful + entertainment,
+      useful,
+      entertainment,
+      apps
+    };
+  }
+  return {
+    total:firstNumber(screen.total, screen.minutes),
+    useful:firstNumber(screen.useful, screen.productive, screen.work),
+    entertainment:firstNumber(screen.entertainment, screen.recreation, screen.social)
+  };
 }
 
 function weekStartOf(dateKey) {
@@ -663,7 +773,7 @@ function generateDailyNote() {
 }
 function buildBackup() { return JSON.stringify({ entries, settings, skills, bookStatuses, exportedAt:new Date().toISOString() }, null, 2); }
 function chatGPTPrompt() {
-  return `You are my structured life tracking assistant. Track my food, sleep, workouts, screen time, Bible reading, other reading, mood, energy, focus, weight, steps, water, caffeine, supplements, and notes throughout the day. When I ask for an export, return only valid JSON.\n\nUse this shape:\n{\n  "date": "YYYY-MM-DD",\n  "calories": number,\n  "protein": number,\n  "carbs": number,\n  "fat": number,\n  "fiber": number,\n  "water": number,\n  "caffeine": number,\n  "creatine": number,\n  "weight": number,\n  "steps": number,\n  "sleep": { "hours": number, "score": number, "bed_time": "HH:MM", "wake_time": "HH:MM" },\n  "workouts": [{ "type": "Cardio|Weight training|Calisthenics|Mobility|Other", "minutes": number, "notes": "" }],\n  "screen_time": { "total": number, "useful": number, "entertainment": number },\n  "bible": [{ "book": "John", "chapters": [3], "minutes": number }],\n  "reading": [{ "title": "Book Title", "pages": number, "chapters": "", "category": "Self improvement|Faith|Fiction|Other", "status": "current|finished|gave-up" }],\n  "mood": number,\n  "energy": number,\n  "focus": number,\n  "stress": number,\n  "notes": ""\n}\n\nRules: Missing values should be omitted, not set to zero. Only use zero when I explicitly logged zero. Any book mention should be status "current" unless I clearly say I finished it or gave up on it.`;
+  return `You are my structured life tracking assistant. Track my food, sleep, workouts, screen time, Bible reading, other reading, mood, energy, focus, weight, steps, water, caffeine, supplements, and notes throughout the day.\n\nWhen I say \"close the day\", \"export\", \"give me the JSON\", or anything similar, return ONE valid raw JSON object only. Do not use Markdown. Do not use a code block. Do not write explanations before or after it. Do not include comments or trailing commas. The first character of your reply must be { and the last character must be }.\n\nUse this exact shape when values are known:\n{\n  \"date\": \"YYYY-MM-DD\",\n  \"calories\": number,\n  \"protein\": number,\n  \"carbs\": number,\n  \"fat\": number,\n  \"fiber\": number,\n  \"water\": number,\n  \"caffeine\": number,\n  \"creatine\": number,\n  \"weight\": number,\n  \"steps\": number,\n  \"sleep\": { \"hours\": number, \"score\": number, \"bed_time\": \"HH:MM\", \"wake_time\": \"HH:MM\" },\n  \"workouts\": [{ \"type\": \"Cardio|Weight training|Calisthenics|Mobility|Other\", \"minutes\": number, \"notes\": \"\" }],\n  \"screen_time\": { \"total\": number, \"useful\": number, \"entertainment\": number, \"apps\": [{ \"name\": \"WhatsApp\", \"minutes\": number }] },\n  \"bible\": [{ \"book\": \"John\", \"chapters\": [3], \"minutes\": number }],\n  \"reading\": [{ \"title\": \"Book Title\", \"pages\": number, \"chapters\": \"\", \"category\": \"Self improvement|Faith|Fiction|Other\", \"status\": \"current|finished|gave-up\" }],\n  \"mood\": number,\n  \"energy\": number,\n  \"focus\": number,\n  \"stress\": number,\n  \"notes\": \"\"\n}\n\nRules:\n- Missing values should be omitted, not set to zero.\n- Only use zero when I explicitly logged zero.\n- For nutrition, read labels first when labels are available.\n- If calories are estimated or uncertain, slightly overestimate calories.\n- If protein or fiber are estimated or uncertain, slightly underestimate protein and fiber.\n- Do not invent exact precision when uncertain; use reasonable rounded numbers.\n- Any book mention should be status \"current\" unless I clearly say I finished it or gave up on it.\n- For screen time, count WhatsApp as useful screen time. Count all other screen time as entertainment unless I explicitly say it was work/useful.\n- If I paste this app's import error back to you, correct yourself by returning raw valid JSON only.`;
 }
 async function copyText(text, label = "Copied") {
   try { await navigator.clipboard.writeText(text); toast(label); } catch { toast("Copy failed"); }
@@ -682,6 +792,8 @@ document.addEventListener("click", (event) => {
   const shift = event.target.closest("[data-date-shift]");
   if (shift) { selectedDate = shiftDate(selectedDate, Number(shift.dataset.dateShift)); return renderAll(); }
   if (event.target.closest("[data-today]")) { selectedDate = localDateKey(new Date()); return renderAll(); }
+  const deleteDay = event.target.closest("[data-delete-day]");
+  if (deleteDay) return deleteEntry(deleteDay.dataset.deleteDay);
   const openDate = event.target.closest("[data-open-date]");
   if (openDate) { selectedDate = openDate.dataset.openDate; activePage = "dashboard"; return renderAll(); }
   const bookButton = event.target.closest("[data-book-status]");
@@ -690,8 +802,17 @@ document.addEventListener("click", (event) => {
     if (book) { book.status = bookButton.dataset.status; book.statusDate = selectedDate; book.lastSeen = selectedDate; saveBooks(); renderAll(); toast("Book updated"); }
     return;
   }
+  const readingPanel = event.target.closest("[data-reading-panel]");
+  if (readingPanel) {
+    const target = document.getElementById(`reading-${readingPanel.dataset.readingPanel}-details`);
+    if (target) {
+      target.open = true;
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+    return;
+  }
   if (event.target.id === "importButton") {
-    try { importPayload(JSON.parse(document.getElementById("jsonImport").value)); } catch (error) { toast(error.message || "Import failed"); }
+    try { importPayload(parseImportText(document.getElementById("jsonImport").value)); } catch (error) { toast(error.message || "Import failed"); }
   }
   if (event.target.id === "copyPromptButton") copyText(chatGPTPrompt(), "Prompt copied");
   if (event.target.id === "saveApiSettings") { settings.apiEndpoint = document.getElementById("apiEndpoint")?.value || ""; saveSettings(); toast("Setup saved"); }
@@ -721,7 +842,7 @@ document.addEventListener("submit", (event) => {
   event.preventDefault();
   const form = event.target, values = Object.fromEntries(new FormData(form).entries());
   if (form.id === "nutritionForm") { updateEntry(selectedDate, numericPatch(values, ["calories","protein","carbs","fat","fiber","water","creatine","caffeine","weight"])); toast("Nutrition saved"); }
-  if (form.id === "movementForm") { updateEntry(selectedDate, { steps:num(values.steps), workout_minutes:num(values.workout_minutes), workout_type:values.workout_type, workouts:values.workout_minutes || values.workout_type ? [{ type:values.workout_type || "Workout", minutes:num(values.workout_minutes) }] : [] }); toast("Movement saved"); }
+  if (form.id === "movementForm") { replaceEntryFields(selectedDate, { steps:num(values.steps), workout_minutes:num(values.workout_minutes), workout_type:values.workout_type, workouts:values.workout_minutes || values.workout_type ? [{ type:values.workout_type || "Workout", minutes:num(values.workout_minutes) }] : [] }); toast("Movement saved"); }
   if (form.id === "sleepForm") { updateEntry(selectedDate, { sleep_hours:num(values.sleep_hours), sleep_score:num(values.sleep_score), bed_time:values.bed_time, wake_time:values.wake_time, energy:num(values.energy), mood:num(values.mood) }); toast("Sleep saved"); }
   if (form.id === "timeForm") { updateEntry(selectedDate, { time:{ total:num(values.screen_total), useful:num(values.screen_useful), entertainment:num(values.screen_entertainment) }, focus:num(values.focus), mood:num(values.mood), energy:num(values.energy) }); toast("Time saved"); }
   if (form.id === "readingForm") {
