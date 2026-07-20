@@ -10,26 +10,26 @@
   "orientation": "portrait",
   "icons": [
     {
-      "src": "./icons/icon-180-v4.png",
-      "sizes": "180x180",
+      "src": "./icons/reset-logo-exact-v7-20260720.png",
+      "sizes": "1254x1254",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "./icons/icon-192-v4.png",
-      "sizes": "192x192",
+      "src": "./icons/reset-logo-exact-v7-20260720.png",
+      "sizes": "1254x1254",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "./icons/icon-512-v4.png",
-      "sizes": "512x512",
+      "src": "./icons/reset-logo-exact-v7-20260720.png",
+      "sizes": "1254x1254",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "./icons/maskable-512-v4.png",
-      "sizes": "512x512",
+      "src": "./icons/reset-logo-exact-v7-20260720.png",
+      "sizes": "1254x1254",
       "type": "image/png",
       "purpose": "maskable"
     }

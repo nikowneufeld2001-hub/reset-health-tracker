@@ -109,7 +109,7 @@ input:focus, select:focus, textarea:focus {
   background: #fff;
   box-shadow: 0 12px 32px rgba(33,119,242,.14);
   flex: 0 0 auto;
-  object-fit: cover;
+  object-fit: contain;
 }
 .brand p, .eyebrow {
   margin: 0 0 2px;
@@ -250,11 +250,13 @@ input:focus, select:focus, textarea:focus {
   display: grid;
   gap: 8px;
   width: min(100%, 430px);
+  justify-self: start;
 }
 .date-pill {
   display: grid;
   gap: 4px;
   margin: 0;
+  width: 100%;
   min-width: 0;
 }
 .date-pill span {
@@ -274,6 +276,7 @@ input:focus, select:focus, textarea:focus {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
   gap: 8px;
+  width: 100%;
 }
 .date-nav-button,
 .date-today-button {
