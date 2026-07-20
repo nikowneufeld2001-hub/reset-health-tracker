@@ -82,7 +82,7 @@ input:focus, select:focus, textarea:focus {
 }
 
 .app {
-  width: min(1180px, 100%);
+  width: min(980px, 100%);
   min-height: 100svh;
   margin: 0 auto;
   padding: calc(env(safe-area-inset-top) + 14px) clamp(15px, 4vw, 34px) calc(var(--tab-h) + env(safe-area-inset-bottom) + 28px);
@@ -95,15 +95,15 @@ input:focus, select:focus, textarea:focus {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  padding: 8px 0 18px;
+  gap: 10px;
+  padding: 6px 0 16px;
   backdrop-filter: blur(18px);
 }
 
-.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.brand { display: flex; align-items: center; gap: 11px; min-width: 0; }
 .brand-logo {
-  width: 54px;
-  height: 54px;
+  width: 52px;
+  height: 52px;
   border: 1px solid rgba(33,119,242,.10);
   border-radius: 16px;
   background: #fff;
@@ -121,7 +121,7 @@ input:focus, select:focus, textarea:focus {
 }
 .brand h1 {
   margin: 0;
-  font-size: clamp(25px, 6vw, 42px);
+  font-size: clamp(25px, 5.2vw, 36px);
   line-height: .98;
   letter-spacing: 0;
 }
@@ -130,8 +130,8 @@ input:focus, select:focus, textarea:focus {
 .icon-button {
   display: grid;
   place-items: center;
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   border: 1px solid var(--line);
   border-radius: 50%;
   background: var(--surface);
@@ -205,9 +205,9 @@ input:focus, select:focus, textarea:focus {
   position: relative;
   overflow: hidden;
   display: grid;
-  gap: 22px;
+  gap: 18px;
   margin-bottom: 18px;
-  padding: clamp(20px, 5vw, 32px);
+  padding: clamp(20px, 4.2vw, 28px);
 }
 .hero-card::before {
   content: "";
@@ -219,29 +219,44 @@ input:focus, select:focus, textarea:focus {
 .hero-content, .date-strip, .summary-stack { position: relative; z-index: 1; }
 .hero-card h2 {
   margin: 0;
-  font-size: clamp(34px, 9vw, 66px);
-  line-height: .94;
+  font-size: clamp(32px, 7vw, 48px);
+  line-height: 1;
   letter-spacing: 0;
 }
-.subtitle { margin: 8px 0 0; color: var(--muted); font-size: 17px; line-height: 1.35; }
+.subtitle { margin: 7px 0 0; color: var(--muted); font-size: 16px; line-height: 1.35; }
+
+.hero-card.signal-card {
+  grid-template-columns: 1fr;
+  gap: 18px;
+}
+.signal-main {
+  display: grid;
+  gap: 8px;
+}
+.signal-tools {
+  display: grid;
+  gap: 12px;
+}
+.signal-pills,
+.signal-mini {
+  margin-top: 4px;
+}
 
 .date-strip { display: grid; grid-template-columns: minmax(138px, 178px) auto auto auto; align-items: end; gap: 10px; }
 .date-field { max-width: 178px; }
 .date-field input { min-height: 44px; padding-inline: 12px; border-radius: 999px; font-weight: 800; }
 .signal-controls {
-  display: flex;
-  flex-wrap: wrap;
+  display: grid;
+  grid-template-columns: minmax(150px, 1fr) auto auto auto auto;
   align-items: end;
   gap: 8px;
-  margin-top: 4px;
+  margin-top: 0;
 }
 .date-pill {
   display: grid;
   gap: 4px;
   margin: 0;
-  width: 164px;
-  min-width: 150px;
-  flex: 0 0 auto;
+  min-width: 0;
 }
 .date-pill span {
   color: var(--muted);
@@ -249,25 +264,24 @@ input:focus, select:focus, textarea:focus {
   font-weight: 850;
 }
 .date-pill input {
-  min-height: 38px;
-  padding: 7px 11px;
+  min-height: 40px;
+  padding: 7px 12px;
   border-radius: 999px;
   text-align: center;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 850;
 }
 .date-nav-button,
 .date-today-button,
 .date-delete-button {
-  min-height: 38px;
+  min-height: 40px;
   border-radius: 999px;
-  padding: 0 14px;
+  padding: 0 13px;
   border: 1px solid var(--line);
   background: color-mix(in srgb, var(--solid) 76%, transparent);
   color: var(--text);
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 850;
-  flex: 0 0 auto;
 }
 .date-today-button {
   background: linear-gradient(135deg, var(--blue), #29a8ff);
@@ -429,7 +443,8 @@ tr:last-child td { border-bottom: 0; }
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 @media (min-width: 700px) {
-  .hero-card { grid-template-columns: minmax(0, 1.1fr) minmax(320px, .9fr); align-items: end; }
+  .hero-card { grid-template-columns: minmax(0, 1.1fr) minmax(300px, .9fr); align-items: end; }
+  .hero-card.signal-card { grid-template-columns: 1fr; }
   .metric-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .category-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .insight-grid, .form-grid, .book-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -438,19 +453,26 @@ tr:last-child td { border-bottom: 0; }
 @media (max-width: 520px) {
   .app { padding-inline: 14px; }
   .brand h1 { font-size: 26px; }
-  .brand-logo { width: 52px; height: 52px; border-radius: 16px; }
-  .hero-card { gap: 16px; padding: 20px; border-radius: 26px; }
-  .hero-card h2 { font-size: clamp(34px, 12vw, 48px); line-height: 1; }
+  .brand-logo { width: 50px; height: 50px; border-radius: 16px; }
+  .icon-button { width: 40px; height: 40px; }
+  .hero-card { gap: 15px; padding: 18px; border-radius: 25px; }
+  .hero-card h2 { font-size: clamp(31px, 10.5vw, 40px); line-height: 1.02; }
   .subtitle { font-size: 15px; }
   .pill-row { gap: 7px; margin-top: 10px; }
   .pill, .status-chip { min-height: 29px; padding: 5px 10px; font-size: 11px; }
   .date-strip { grid-template-columns: minmax(138px, 1fr) 1fr; }
   .date-strip .field { grid-column: auto; }
-  .signal-controls { gap: 7px; }
-  .date-pill { width: 158px; min-width: 150px; }
+  .signal-controls { grid-template-columns: 1fr auto auto auto; gap: 7px; }
+  .date-pill { grid-column: 1 / -1; }
   .date-nav-button,
-  .date-today-button,
-  .date-delete-button { min-height: 36px; padding-inline: 12px; font-size: 12px; }
+  .date-today-button { min-height: 36px; padding-inline: 12px; font-size: 12px; }
+  .date-delete-button {
+    grid-column: 1 / -1;
+    justify-self: start;
+    min-height: 34px;
+    padding-inline: 13px;
+    font-size: 12px;
+  }
   .metric-grid { gap: 10px; }
   .metric-card { min-height: 134px; padding: 15px; border-radius: 22px; }
   .metric-value { font-size: 26px; }

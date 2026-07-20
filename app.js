@@ -310,7 +310,7 @@ function pageHero(id, title, subtitle) {
 }
 function dashboardDateControls() {
   return `<div class="signal-controls" aria-label="Date controls">
-    <label class="date-pill" for="viewDate"><span>Date</span><input id="viewDate" type="date" value="${selectedDate}"></label>
+    <label class="date-pill" for="viewDate"><span>View date</span><input id="viewDate" type="date" value="${selectedDate}"></label>
     <button class="date-nav-button" type="button" data-date-shift="-1" aria-label="Previous day">Prev</button>
     <button class="date-today-button" type="button" data-today>Today</button>
     <button class="date-nav-button" type="button" data-date-shift="1" aria-label="Next day">Next</button>
@@ -351,20 +351,20 @@ function renderDashboard() {
   const books = readingSummary();
   const calorieDetail = calorieStatus(d.calories);
   document.getElementById("dashboardView").innerHTML = `
-    <section class="hero-card">
-      <div class="hero-content">
+    <section class="hero-card signal-card">
+      <div class="hero-content signal-main">
         <p class="eyebrow">Today</p><h2>Current Signal</h2>
         <p class="subtitle">${formatDate(selectedDate)}${loggedDates().includes(selectedDate) ? "" : " - no saved record yet"}</p>
-        <div class="pill-row">
+        <div class="pill-row signal-pills">
           <span class="pill ${d.weight !== null ? "good" : ""}">Weight ${d.weight !== null ? `${fmt(d.weight,1)} kg` : "-"}</span>
           <span class="pill ${d.sleepHours !== null ? "good" : ""}">Sleep ${d.sleepHours !== null ? `${fmt(d.sleepHours,1)} h` : "-"}</span>
           <span class="pill ${d.workoutMinutes ? "good" : ""}">${d.workoutType || "No workout type"}</span>
           <span class="pill ${bible.today.length ? "good" : ""}">${bible.today.length ? `${bible.todayChapters} Bible ch.` : "No Bible logged"}</span>
         </div>
       </div>
-      <div class="summary-stack">
+      <div class="summary-stack signal-tools">
         ${dashboardDateControls()}
-        <div class="pill-row">
+        <div class="pill-row signal-mini">
           <span class="pill">${latestWeightChange()}</span>
           <span class="pill">7d sleep ${fmt(average(week.map((x) => x.sleepHours)),1)} h</span>
           <span class="pill">7d steps ${fmt(average(week.map((x) => x.steps)))} avg</span>
