@@ -310,18 +310,11 @@ function pageHero(id, title, subtitle) {
 }
 function dashboardDateControls() {
   return `<div class="signal-controls" aria-label="Date controls">
-    <div class="signal-date-row">
-      <button class="date-nav-button" type="button" data-date-shift="-1" aria-label="Previous day">Prev</button>
-      <label class="date-pill" for="viewDate">
-        <span>Date</span>
-        <input id="viewDate" type="date" value="${selectedDate}">
-      </label>
-      <button class="date-nav-button" type="button" data-date-shift="1" aria-label="Next day">Next</button>
-    </div>
-    <div class="signal-actions">
-      <button class="date-today-button" type="button" data-today>Today</button>
-      <button class="date-delete-button" type="button" data-delete-day="${selectedDate}">Delete Day</button>
-    </div>
+    <label class="date-pill" for="viewDate"><span>Date</span><input id="viewDate" type="date" value="${selectedDate}"></label>
+    <button class="date-nav-button" type="button" data-date-shift="-1" aria-label="Previous day">Prev</button>
+    <button class="date-today-button" type="button" data-today>Today</button>
+    <button class="date-nav-button" type="button" data-date-shift="1" aria-label="Next day">Next</button>
+    <button class="date-delete-button" type="button" data-delete-day="${selectedDate}">Delete</button>
   </div>`;
 }
 function input(name, label, value, type = "text", step = "1") {
