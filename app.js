@@ -300,22 +300,40 @@ function metricActionCard({ title, value, unit, goal, tone = "blue", detail = ""
 function pageHero(id, title, subtitle) {
   return `<section class="hero-card">
     <div class="hero-content"><p class="eyebrow">${escapeHTML(title)}</p><h2 id="${id}">${escapeHTML(title)}</h2><p class="subtitle">${escapeHTML(subtitle)}</p></div>
-    <div class="date-strip">
-      <div class="field date-field"><label for="${id}Date">Date</label><input id="${id}Date" type="date" value="${selectedDate}" data-date-input></div>
-      <button class="soft-button" type="button" data-date-shift="-1">Prev</button>
-      <button class="primary-button" type="button" data-today>Today</button>
-      <button class="soft-button" type="button" data-date-shift="1">Next</button>
-    </div>
+    ${dateControls(`${id}Date`)}
   </section>`;
 }
-function dashboardDateControls() {
-  return `<div class="signal-controls" aria-label="Date controls">
-    <label class="date-pill" for="viewDate"><span>View date</span><input id="viewDate" type="date" value="${selectedDate}"></label>
-    <button class="date-nav-button" type="button" data-date-shift="-1" aria-label="Previous day">Prev</button>
-    <button class="date-today-button" type="button" data-today>Today</button>
-    <button class="date-nav-button" type="button" data-date-shift="1" aria-label="Next day">Next</button>
-    <button class="date-delete-button" type="button" data-delete-day="${selectedDate}">Delete</button>
+function dateControls(inputId = "viewDate") {
+  return `<div class="date-controls" aria-label="Date controls">
+    <label class="date-pill" for="${inputId}"><span>View date</span><input id="${inputId}" type="date" value="${selectedDate}" data-date-input></label>
+    <div class="date-button-row">
+      <button class="date-nav-button" type="button" data-date-shift="-1" aria-label="Previous day">Prev</button>
+      <button class="date-today-button" type="button" data-today>Today</button>
+      <button class="date-nav-button" type="button" data-date-shift="1" aria-label="Next day">Next</button>
+    </div>
   </div>`;
+}
+function dashboardDateControls() {
+  return `<div class="signal-controls">
+    ${dateControls("viewDate")}
+  </div>`;
+}
+function confirmDeleteEntry(date) {
+  return `<div class="ledger-confirm" data-confirm-delete="${date}">
+    <span>Delete ${formatDate(date)}?</span>
+    <button class="status-chip danger-chip" type="button" data-delete-day="${date}">Delete</button>
+    <button class="status-chip" type="button" data-cancel-delete>Keep</button>
+  </div>`;
+}
+function ledgerRow(date) {
+  const d = dayData(date);
+  return `<article class="list-row ledger-row" data-ledger-row="${date}">
+    <button class="text-button ledger-open" type="button" data-open-date="${date}">
+      <div><div class="list-title">${formatDate(date)}</div><div class="list-subtitle">${fmt(d.calories)} kcal, ${fmt(d.steps)} steps, ${fmt(d.sleepHours,1)} h sleep, ${d.bible.length + d.reading.length} reading sessions</div></div>
+    </button>
+    <div class="ledger-actions"><button class="status-chip" type="button" data-open-date="${date}">Open</button></div>
+    ${confirmDeleteEntry(date)}
+  </article>`;
 }
 function input(name, label, value, type = "text", step = "1") {
   return `<div class="form-row"><label for="${name}">${escapeHTML(label)}</label><input id="${name}" name="${name}" type="${type}" ${type === "number" ? `step="${step}"` : ""} value="${escapeHTML(value ?? "")}"></div>`;
@@ -529,8 +547,7 @@ function renderLedger() {
   document.getElementById("ledgerView").innerHTML = `
     ${pageHero("ledgerTitle","Ledger","Every saved day in one place.")}
     <section class="panel">${dates.length ? `<div class="list">${dates.map((date) => {
-      const d = dayData(date);
-      return `<article class="list-row"><button class="text-button ledger-open" type="button" data-open-date="${date}"><div><div class="list-title">${formatDate(date)}</div><div class="list-subtitle">${fmt(d.calories)} kcal, ${fmt(d.steps)} steps, ${fmt(d.sleepHours,1)} h sleep, ${d.bible.length + d.reading.length} reading sessions</div></div></button><div class="ledger-actions"><button class="status-chip" type="button" data-open-date="${date}">Open</button><button class="status-chip danger-chip" type="button" data-delete-day="${date}">Delete</button></div></article>`;
+      return ledgerRow(date);
     }).join("")}</div>` : `<div class="empty">No saved days yet.</div>`}</section>`;
 }
 function renderShare() {
@@ -790,6 +807,11 @@ function toast(message) {
 }
 
 document.addEventListener("click", (event) => {
+  const cancelDelete = event.target.closest("[data-cancel-delete]");
+  if (cancelDelete) {
+    cancelDelete.closest(".ledger-row")?.classList.remove("is-confirming");
+    return;
+  }
   const pageButton = event.target.closest("[data-page]");
   if (pageButton) return setActivePage(pageButton.dataset.page);
   const shift = event.target.closest("[data-date-shift]");
@@ -838,6 +860,24 @@ document.addEventListener("click", (event) => {
     } catch { toast("Restore failed"); }
   }
 });
+let ledgerTouch = null;
+document.addEventListener("touchstart", (event) => {
+  const row = event.target.closest(".ledger-row");
+  if (!row || !event.touches.length) return;
+  ledgerTouch = { row, x:event.touches[0].clientX, y:event.touches[0].clientY };
+}, { passive: true });
+document.addEventListener("touchend", (event) => {
+  if (!ledgerTouch || !event.changedTouches.length) return;
+  const dx = event.changedTouches[0].clientX - ledgerTouch.x;
+  const dy = event.changedTouches[0].clientY - ledgerTouch.y;
+  if (dx < -44 || dy < -44) {
+    document.querySelectorAll(".ledger-row.is-confirming").forEach((row) => {
+      if (row !== ledgerTouch.row) row.classList.remove("is-confirming");
+    });
+    ledgerTouch.row.classList.add("is-confirming");
+  }
+  ledgerTouch = null;
+}, { passive: true });
 document.addEventListener("change", (event) => {
   if (event.target.matches("#viewDate, [data-date-input]")) { selectedDate = event.target.value || selectedDate; renderAll(); }
 });
