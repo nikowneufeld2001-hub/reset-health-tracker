@@ -161,6 +161,10 @@ function dayData(date = selectedDate) {
   const mood = e.mood_detail || e.mind || {};
   const workouts = normalizeWorkouts(e.workouts || e.workout || movement.workouts || movement.workout);
   const workoutMinutes = firstNumber(e.workout_minutes, movement.minutes, movement.workout_minutes) || workouts.reduce((sum, w) => sum + (num(w.minutes) || 0), 0) || null;
+  const bible = normalizeBible(e.bible || e.bible_reading || e.scripture || e.bible_sessions);
+  const audioBible = normalizeBible(e.audio_bible || e.bible_audio || e.audio_scripture || e.listened_bible || e.audio_bible_sessions);
+  const reading = normalizeReading(e.reading || e.reading_detail || e.books || e.book, "read");
+  const audioReading = normalizeReading(e.audio_reading || e.audiobooks || e.audiobook || e.listening || e.books_listened || e.listened_books, "listen");
   return {
     raw: e,
     calories: firstNumber(e.calories, nutrition.calories, nutrition.kcal),
@@ -168,7 +172,7 @@ function dayData(date = selectedDate) {
     carbs: firstNumber(e.carbs, nutrition.carbs, nutrition.carbs_g),
     fat: firstNumber(e.fat, nutrition.fat, nutrition.fat_g),
     fiber: firstNumber(e.fiber, nutrition.fiber, nutrition.fiber_g),
-    water: firstNumber(e.water, nutrition.water, nutrition.water_l, e.water_l),
+    water: firstNumber(e.water, nutrition.water, nutrition.water_l, e.water_l, e.water_liters),
     caffeine: firstNumber(e.caffeine, nutrition.caffeine, nutrition.caffeine_mg),
     creatine: firstNumber(e.creatine, nutrition.creatine, nutrition.creatine_g),
     weight: firstNumber(e.weight, e.weight_kg, e.body_weight, e.measurements?.weight),
@@ -183,12 +187,14 @@ function dayData(date = selectedDate) {
     screenTotal: firstNumber(time.total, time.minutes, time.screen_time, e.screen_minutes, e.screen_time),
     screenUseful: firstNumber(time.useful, time.productive, time.work, e.screen_useful),
     screenEntertainment: firstNumber(time.entertainment, time.recreation, time.social, e.screen_entertainment),
-    mood: firstNumber(e.mood, mood.mood),
-    energy: firstNumber(e.energy, mood.energy),
+    mood: firstNumber(e.mood, mood.mood, e.mood_1_10),
+    energy: firstNumber(e.energy, mood.energy, e.energy_1_10),
     focus: firstNumber(e.focus, mood.focus),
     stress: firstNumber(e.stress, mood.stress),
-    bible: normalizeBible(e.bible || e.bible_reading || e.scripture || e.bible_sessions),
-    reading: normalizeReading(e.reading || e.reading_detail || e.books || e.book),
+    bible,
+    audioBible,
+    reading,
+    audioReading,
     notes: e.notes || e.summary || ""
   };
 }
@@ -201,6 +207,7 @@ function normalizeWorkouts(value) {
   });
 }
 function normalizeBible(value) {
+  if (value && !Array.isArray(value) && typeof value === "object" && Array.isArray(value.sessions)) return normalizeBible(value.sessions);
   return listify(value).flatMap((item) => {
     if (!item) return [];
     if (typeof item === "string") return parseBibleString(item);
@@ -225,12 +232,13 @@ function parseChapters(value) {
     return Number.isFinite(n) ? [n] : [];
   });
 }
-function normalizeReading(value) {
+function normalizeReading(value, medium = "read") {
+  if (value && !Array.isArray(value) && typeof value === "object" && Array.isArray(value.sessions)) return normalizeReading(value.sessions, medium);
   return listify(value).flatMap((item) => {
     if (!item) return [];
-    if (typeof item === "string") return [{ title: item, pages: null, chapters: "", category: "Other", status: "current", notes: "" }];
+    if (typeof item === "string") return [{ title: item, pages: null, minutes: null, chapters: "", category: "Other", status: "current", medium, notes: "" }];
     const title = item.title || item.book || item.name || "";
-    return title ? [{ title, pages: firstNumber(item.pages, item.page_count, item.pages_read), chapters: item.chapters || item.chapter || "", category: item.category || item.type || "Other", status: normalizeStatus(item.status || item.state || "current"), notes: item.notes || "" }] : [];
+    return title ? [{ title, pages: firstNumber(item.pages, item.page_count, item.pages_read), minutes: firstNumber(item.minutes, item.time, item.duration), chapters: item.chapters || item.chapter || "", category: item.category || item.type || "Other", status: normalizeStatus(item.status || item.state || "current"), medium: item.medium || medium, notes: item.notes || "" }] : [];
   });
 }
 function normalizeStatus(value) {
@@ -242,13 +250,18 @@ function normalizeStatus(value) {
 
 function syncBookStatusesFromEntries() {
   const previous = bookStatuses || {};
-  const next = {};
-  loggedDates().forEach((date) => dayData(date).reading.forEach((book) => {
-    const key = cleanKey(book.title);
-    if (!key) return;
-    const existing = next[key] || previous[key] || {};
+  const next = { ...previous };
+  loggedDates().forEach((date) => {
+    const d = dayData(date);
+    [...d.reading, ...d.audioReading].forEach((book) => {
+    const titleKey = cleanKey(book.title);
+    if (!titleKey) return;
+    const medium = book.medium === "listen" ? "listen" : "read";
+    const key = `${medium}:${titleKey}`;
+    const existing = next[key] || {};
     next[key] = {
       title: existing.title || book.title,
+      medium,
       firstSeen: existing.firstSeen || date,
       lastSeen: date > (existing.lastSeen || "") ? date : existing.lastSeen || date,
       status: existing.status || normalizeStatus(book.status),
@@ -259,7 +272,8 @@ function syncBookStatusesFromEntries() {
       next[key].status = normalizeStatus(book.status);
       next[key].statusDate = date;
     }
-  }));
+    });
+  });
   bookStatuses = next;
   saveBooks();
 }
@@ -329,7 +343,7 @@ function ledgerRow(date) {
   const d = dayData(date);
   return `<article class="list-row ledger-row" data-ledger-row="${date}">
     <button class="text-button ledger-open" type="button" data-open-date="${date}">
-      <div><div class="list-title">${formatDate(date)}</div><div class="list-subtitle">${fmt(d.calories)} kcal, ${fmt(d.steps)} steps, ${fmt(d.sleepHours,1)} h sleep, ${d.bible.length + d.reading.length} reading sessions</div></div>
+      <div><div class="list-title">${formatDate(date)}</div><div class="list-subtitle">${fmt(d.calories)} kcal, ${fmt(d.steps)} steps, ${fmt(d.sleepHours,1)} h sleep, ${d.bible.length + d.audioBible.length + d.reading.length + d.audioReading.length} reading/listening sessions</div></div>
     </button>
     <div class="ledger-actions"><button class="status-chip" type="button" data-open-date="${date}">Open</button></div>
     ${confirmDeleteEntry(date)}
@@ -354,7 +368,7 @@ function categoryCard(title, page, stat, sub, icon) {
 
 function renderAll() {
   applyTheme();
-  renderDashboard(); renderNutrition(); renderMovement(); renderSleep(); renderTime(); renderReading(); renderMore(); renderGoals(); renderImport(); renderAI(); renderLedger(); renderShare();
+  renderDashboard(); renderNutrition(); renderMovement(); renderSleep(); renderTime(); renderReading(); renderMore(); renderGoals(); renderImport(); renderAI(); renderLedger(); renderShare(); renderData();
   setActivePage(activePage, false);
 }
 function applyTheme() {
@@ -377,7 +391,7 @@ function renderDashboard() {
           <span class="pill ${d.weight !== null ? "good" : ""}">Weight ${d.weight !== null ? `${fmt(d.weight,1)} kg` : "-"}</span>
           <span class="pill ${d.sleepHours !== null ? "good" : ""}">Sleep ${d.sleepHours !== null ? `${fmt(d.sleepHours,1)} h` : "-"}</span>
           <span class="pill ${d.workoutMinutes ? "good" : ""}">${d.workoutType || "No workout type"}</span>
-          <span class="pill ${bible.today.length ? "good" : ""}">${bible.today.length ? `${bible.todayChapters} Bible ch.` : "No Bible logged"}</span>
+          <span class="pill ${bible.todayRead.length || bible.todayAudio.length ? "good" : ""}">${bible.todayRead.length || bible.todayAudio.length ? `${bible.todayReadChapters} read / ${bible.todayAudioChapters} audio ch.` : "No Bible logged"}</span>
         </div>
       </div>
       <div class="summary-stack signal-tools">
@@ -396,7 +410,8 @@ function renderDashboard() {
       ${metricCard({ title:"Sleep", value:d.sleepHours, unit:"h", goal:settings.sleepGoal, tone:"violet", detail:d.sleepScore !== null ? `Score ${fmt(d.sleepScore)}` : "" })}
       ${metricCard({ title:"Movement", value:d.steps, unit:"steps", goal:settings.stepsGoal, tone:"cyan", detail:d.workoutMinutes ? `${fmt(d.workoutMinutes)} workout min` : "" })}
       ${metricCard({ title:"Screen", value:d.screenEntertainment, unit:"entertainment min", goal:settings.screenEntertainmentLimit, tone:"amber", lowerLimit:true, detail:d.screenUseful !== null ? `${fmt(d.screenUseful)} useful min` : "" })}
-      ${metricCard({ title:"Reading", value:d.reading.length + d.bible.length, unit:"sessions", goal:2, tone:"violet", detail:books.current.length ? `${books.current.length} current books` : "" })}
+      ${metricCard({ title:"Reading", value:d.reading.length + d.bible.length, unit:"sessions", goal:2, tone:"violet", detail:books.readCurrent.length ? `${books.readCurrent.length} current books` : "" })}
+      ${metricCard({ title:"Listening", value:d.audioReading.length + d.audioBible.length, unit:"sessions", goal:1, tone:"blue", detail:books.listenCurrent.length ? `${books.listenCurrent.length} current audio` : "" })}
       ${metricCard({ title:"Mood", value:d.mood, unit:"/10", goal:10, tone:"mint", detail:d.energy !== null ? `Energy ${fmt(d.energy)}/10` : "" })}
     </div>
     <h2 class="section-title">Deep Dives</h2>
@@ -405,7 +420,7 @@ function renderDashboard() {
       ${categoryCard("Movement","movement",`${fmt(d.steps)} steps`,`${fmt(d.workoutMinutes)} workout min`,"icon-move")}
       ${categoryCard("Sleep","sleep",`${fmt(d.sleepHours,1)} h`,d.bedTime || d.wakeTime ? `${d.bedTime || "-"} to ${d.wakeTime || "-"}` : "Bed and wake not logged","icon-sleep")}
       ${categoryCard("Time","time",`${fmt(d.screenTotal)} screen min`,`${fmt(d.screenUseful)} useful / ${fmt(d.screenEntertainment)} entertainment`,"icon-time")}
-      ${categoryCard("Reading","reading",`${bible.monthBooks.length} Bible books this month`,`${books.finishedThisMonth.length} books finished this month`,"icon-read")}
+      ${categoryCard("Reading","reading",`${bible.monthReadBooks.length} read Bible books`,`${books.readFinishedThisMonth.length} books / ${books.listenFinishedThisMonth.length} audio done`,"icon-read")}
       ${categoryCard("Goals","goals","Adjust targets","Goals shape the dashboard status","icon-goals")}
     </div>
     <details class="detail-card"><summary>Reading Snapshot</summary><div class="detail-body">${readingSnapshotHTML(bible, books)}</div></details>
@@ -487,23 +502,28 @@ function renderTime() {
 
 function renderReading() {
   const bible = bibleSummary(), books = readingSummary(), d = dayData(selectedDate);
+  const todaySessions = d.reading.length + d.audioReading.length + d.bible.length + d.audioBible.length;
   document.getElementById("readingView").innerHTML = `
-    ${pageHero("readingTitle","Reading","Bible books and chapters, other books, pages, and full reading history.")}
+    ${pageHero("readingTitle","Reading","Books, Bible, audiobooks, Audio Bible, and full history.")}
     <div class="metric-grid">
-      ${metricCard({ title:"Bible Year", value:bible.yearChapters, unit:"chapters", goal:TOTAL_BIBLE_CHAPTERS, tone:"violet", detail:`${bible.yearPercent}% of Bible` })}
-      ${metricCard({ title:"Bible Month", value:bible.monthChapters, unit:"chapters", goal:settings.bibleChaptersGoal * 4, tone:"blue" })}
-      ${metricActionCard({ title:"Current Books", value:books.current.length, unit:"books", goal:Math.max(1, books.current.length), tone:"cyan", detail:"Tap to view progress", panel:"current" })}
-      ${metricActionCard({ title:"Finished", value:books.finished.length, unit:"all time", goal:Math.max(1, books.finished.length), tone:"mint", detail:`${books.finishedThisMonth.length} this month`, panel:"finished" })}
+      ${metricCard({ title:"Bible Read", value:bible.yearReadChapters, unit:"chapters", goal:TOTAL_BIBLE_CHAPTERS, tone:"violet", detail:`${bible.yearReadPercent}% of Bible` })}
+      ${metricCard({ title:"Audio Bible", value:bible.yearAudioChapters, unit:"chapters", goal:TOTAL_BIBLE_CHAPTERS, tone:"blue", detail:`${bible.yearAudioPercent}% listened` })}
+      ${metricActionCard({ title:"Reading", value:books.readCurrent.length, unit:"current", goal:Math.max(1, books.readCurrent.length), tone:"cyan", detail:`${books.readFinishedThisMonth.length} finished this month`, panel:"current" })}
+      ${metricActionCard({ title:"Audiobooks", value:books.listenCurrent.length, unit:"current", goal:Math.max(1, books.listenCurrent.length), tone:"mint", detail:`${books.listenFinishedThisMonth.length} finished this month`, panel:"audio" })}
     </div>
     <details class="detail-card" open><summary>Bible Summary</summary><div class="detail-body">${readingSnapshotHTML(bible, books)}</div></details>
     <details class="detail-card" open><summary>Log Reading</summary><div class="detail-body"><form id="readingForm" class="form-grid">
-      ${select("bible_book","Bible book","",["",...BIBLE_BOOKS.map((x) => x[0])])}${input("bible_chapters","Bible chapters","","text")}${input("book_title","Other book","","text")}${input("book_pages","Pages read","","number")}${input("book_chapters","Book chapters","","text")}${select("book_status","Book status","current",["current","finished","gave-up"])}
+      ${select("bible_book","Bible book read","",["",...BIBLE_BOOKS.map((x) => x[0])])}${input("bible_chapters","Bible chapters read","","text")}${select("audio_bible_book","Audio Bible book","",["",...BIBLE_BOOKS.map((x) => x[0])])}${input("audio_bible_chapters","Audio Bible chapters","","text")}${input("audio_bible_minutes","Audio Bible minutes","","number")}
+      ${input("book_title","Book read","","text")}${input("book_pages","Pages read","","number")}${input("book_chapters","Book chapters read","","text")}${select("book_status","Book status","current",["current","finished","gave-up"])}
+      ${input("audio_book_title","Audiobook listened","","text")}${input("audio_book_minutes","Audiobook minutes","","number")}${input("audio_book_chapters","Audiobook chapters","","text")}${select("audio_book_status","Audiobook status","current",["current","finished","gave-up"])}
       <div class="form-actions"><button class="primary-button" type="submit">Save Reading</button></div>
     </form></div></details>
-    <details class="detail-card" id="reading-current-details"><summary>Currently Reading</summary><div class="detail-body"><div class="list">${bookListHTML(books.current, true, "current")}</div></div></details>
-    <details class="detail-card" id="reading-finished-details"><summary>Finished Books</summary><div class="detail-body"><div class="list">${bookListHTML(books.finished, false, "finished")}</div></div></details>
-    <section class="panel"><div class="panel-head"><h3>Book History</h3><span class="status-chip">${books.all.length}</span></div><div class="list">${bookListHTML(books.all, false, "history")}</div></section>
-    <section class="panel"><div class="panel-head"><h3>Reading Log</h3><span class="status-chip">${d.reading.length + d.bible.length} today</span></div>${readingLogTableHTML()}</section>`;
+    <details class="detail-card" id="reading-current-details"><summary>Currently Reading</summary><div class="detail-body"><div class="list">${bookListHTML(books.readCurrent, true, "current")}</div></div></details>
+    <details class="detail-card" id="reading-audio-details"><summary>Currently Listening</summary><div class="detail-body"><div class="list">${bookListHTML(books.listenCurrent, true, "audio")}</div></div></details>
+    <details class="detail-card" id="reading-finished-details"><summary>Finished Books</summary><div class="detail-body"><div class="list">${bookListHTML(books.readFinished, false, "finished")}</div></div></details>
+    <details class="detail-card" id="reading-finished-audio-details"><summary>Finished Audiobooks</summary><div class="detail-body"><div class="list">${bookListHTML(books.listenFinished, false, "finished-audio")}</div></div></details>
+    <section class="panel"><div class="panel-head"><h3>Full Book History</h3><span class="status-chip">${books.all.length}</span></div><div class="list">${bookListHTML(books.all, false, "history")}</div></section>
+    <section class="panel"><div class="panel-head"><h3>Reading & Listening Log</h3><span class="status-chip">${todaySessions} today</span></div>${readingLogTableHTML()}</section>`;
 }
 
 function renderMore() {
@@ -512,6 +532,7 @@ function renderMore() {
     <div class="category-grid">
       ${categoryCard("Goals","goals","Targets","Calories, sleep, movement, reading, and time.","icon-goals")}
       ${categoryCard("Import JSON","import","ChatGPT import","Paste structured daily data.","icon-import")}
+      ${categoryCard("Data Backup","data","Full backup","Protect saved days, books, listening, goals, and skills.","icon-ledger")}
       ${categoryCard("AI Tracker","ai","Future backend","Natural language and photo capture.","icon-ai")}
       ${categoryCard("Ledger","ledger","Daily records","Full saved history by date.","icon-ledger")}
       ${categoryCard("Share","share","Obsidian and backup","Copy weekly reviews or export data.","icon-read")}
@@ -555,7 +576,29 @@ function renderShare() {
   document.getElementById("shareView").innerHTML = `
     ${pageHero("shareTitle","Share","Copy a weekly Obsidian review or back up your data.")}
     <section class="panel"><div class="form-grid"><div class="field"><label for="weekStart">Week start</label><input id="weekStart" type="date" value="${weekStart}"></div></div><div class="form-actions"><button class="primary-button" type="button" id="copyWeeklyReview">Copy Weekly Review</button><button class="soft-button" type="button" id="copyDailyNote">Copy Daily Note</button></div></section>
-    <section class="panel"><div class="panel-head"><h3>Backup</h3><span class="status-chip">${loggedDates().length} days</span></div><div class="form-actions"><button class="primary-button" type="button" id="copyBackup">Copy Backup</button><button class="soft-button" type="button" id="downloadBackup">Download Backup</button></div><textarea id="restoreBox" placeholder="Paste backup JSON here"></textarea><div class="form-actions"><button class="soft-button" type="button" id="restoreBackup">Restore Backup</button></div></section>`;
+    <section class="panel"><div class="panel-head"><h3>Full Data Backup</h3><span class="status-chip">${loggedDates().length} days</span></div><p class="panel-note">This protects saved days, reading, audiobooks, Audio Bible, goals, skills, and book status history.</p><div class="form-actions"><button class="primary-button" type="button" id="copyBackup">Copy Full Backup</button><button class="soft-button" type="button" id="downloadBackup">Download Full Backup</button><button class="soft-button" type="button" data-page="data">Open Data Page</button></div></section>`;
+}
+
+function renderData() {
+  document.getElementById("dataView").innerHTML = `
+    ${pageHero("dataTitle","Data Backup","Protect and restore the full app data before updating.")}
+    <section class="panel"><div class="panel-head"><h3>Full Backup</h3><span class="status-chip">${loggedDates().length} days</span></div>
+      <p class="panel-note">Use this before every GitHub update. It includes saved days, goals, skills, reading, audiobooks, Bible, Audio Bible, and book statuses.</p>
+      <div class="form-actions"><button class="primary-button" type="button" id="copyBackup">Copy Full Backup</button><button class="soft-button" type="button" id="downloadBackup">Download Full Backup</button></div>
+    </section>
+    <section class="panel"><div class="panel-head"><h3>Restore Full Backup</h3><span class="status-chip">Use after update</span></div>
+      <p class="panel-note">Paste the full backup here. This is different from the daily ChatGPT import JSON.</p>
+      <textarea id="restoreBox" placeholder="Paste full backup JSON here"></textarea>
+      <div class="form-actions"><button class="primary-button" type="button" id="restoreBackup">Restore Full Backup</button></div>
+    </section>
+    <section class="panel"><div class="panel-head"><h3>What This Saves</h3><span class="status-chip">Full app</span></div>
+      <div class="list">
+        ${snapshotRow("Daily records", "Nutrition, sleep, movement, mood, Bible, Audio Bible, reading, and listening.", `${loggedDates().length} days`)}
+        ${snapshotRow("Book history", "Currently reading/listening, finished, and gave-up statuses.", `${Object.keys(bookStatuses).length} books`)}
+        ${snapshotRow("Settings", "Goals, theme, and tracker preferences.", "saved")}
+        ${snapshotRow("Skills", "Calisthenics skill records and PRs.", `${skills.length} records`)}
+      </div>
+    </section>`;
 }
 
 function latestWeightChange() {
@@ -576,7 +619,7 @@ function insightCards() {
     panelSmall("Nutrition consistency", `${nutritionDays}/${logged.length || 14} logged days`, nutritionDays ? "Logged data can now support weekly averages." : "No nutrition records in this window yet."),
     panelSmall("Sleep and energy", `${sleepEnergy.length} paired days`, sleepEnergy.length >= 3 ? "Logged data suggests sleep and energy can be compared cautiously." : "Log sleep and energy on the same days to surface a pattern."),
     panelSmall("Movement rhythm", `${workoutDays} workout days`, workoutDays >= 3 ? "This week has a steady workout signal." : "A few more workout entries would make trends more useful."),
-    panelSmall("Reading trail", `${bible.yearChapters}/${TOTAL_BIBLE_CHAPTERS} Bible chapters`, `${bible.yearPercent}% of the Bible logged this year.`)
+    panelSmall("Reading trail", `${bible.yearReadChapters}/${TOTAL_BIBLE_CHAPTERS} Bible chapters read`, `${bible.yearReadPercent}% read and ${bible.yearAudioPercent}% listened this year.`)
   ];
 }
 function panelSmall(title, metric, copy) {
@@ -584,14 +627,43 @@ function panelSmall(title, metric, copy) {
 }
 
 function bibleSummary() {
-  const today = dayData(selectedDate).bible;
+  const selected = dayData(selectedDate);
+  const todayRead = selected.bible, todayAudio = selected.audioBible;
   const monthKey = selectedDate.slice(0,7), yearKey = selectedDate.slice(0,4);
-  const all = [];
-  loggedDates().forEach((date) => dayData(date).bible.forEach((item) => all.push({ date, ...item })));
-  const month = all.filter((item) => item.date.startsWith(monthKey));
-  const year = all.filter((item) => item.date.startsWith(yearKey));
-  const yearSet = uniqueBibleChapters(year), monthSet = uniqueBibleChapters(month);
-  return { today, todayChapters: countBibleChapters(today), month, year, monthChapters: monthSet.size, yearChapters: yearSet.size, yearPercent: Math.round((yearSet.size / TOTAL_BIBLE_CHAPTERS) * 1000) / 10, monthBooks: uniqueBooks(month), yearBooks: uniqueBooks(year), completedBooks: completedBibleBooks(yearSet) };
+  const readAll = [], audioAll = [];
+  loggedDates().forEach((date) => {
+    const d = dayData(date);
+    d.bible.forEach((item) => readAll.push({ date, ...item }));
+    d.audioBible.forEach((item) => audioAll.push({ date, ...item }));
+  });
+  const monthRead = readAll.filter((item) => item.date.startsWith(monthKey));
+  const yearRead = readAll.filter((item) => item.date.startsWith(yearKey));
+  const monthAudio = audioAll.filter((item) => item.date.startsWith(monthKey));
+  const yearAudio = audioAll.filter((item) => item.date.startsWith(yearKey));
+  const yearReadSet = uniqueBibleChapters(yearRead), monthReadSet = uniqueBibleChapters(monthRead);
+  const yearAudioSet = uniqueBibleChapters(yearAudio), monthAudioSet = uniqueBibleChapters(monthAudio);
+  return {
+    todayRead,
+    todayAudio,
+    todayReadChapters: countBibleChapters(todayRead),
+    todayAudioChapters: countBibleChapters(todayAudio),
+    monthRead,
+    yearRead,
+    monthAudio,
+    yearAudio,
+    monthReadChapters: monthReadSet.size,
+    yearReadChapters: yearReadSet.size,
+    monthAudioChapters: monthAudioSet.size,
+    yearAudioChapters: yearAudioSet.size,
+    yearReadPercent: Math.round((yearReadSet.size / TOTAL_BIBLE_CHAPTERS) * 1000) / 10,
+    yearAudioPercent: Math.round((yearAudioSet.size / TOTAL_BIBLE_CHAPTERS) * 1000) / 10,
+    monthReadBooks: uniqueBooks(monthRead),
+    yearReadBooks: uniqueBooks(yearRead),
+    monthAudioBooks: uniqueBooks(monthAudio),
+    yearAudioBooks: uniqueBooks(yearAudio),
+    completedReadBooks: completedBibleBooks(yearReadSet),
+    completedAudioBooks: completedBibleBooks(yearAudioSet)
+  };
 }
 function matchBibleBook(name) {
   const key = cleanKey(name);
@@ -612,29 +684,46 @@ function completedBibleBooks(chapterSet) {
   return BIBLE_BOOKS.filter(([book, chapters]) => Array.from({ length: chapters }, (_, i) => i + 1).every((chapter) => chapterSet.has(`${book}:${chapter}`))).map(([book]) => book);
 }
 function readingSummary() {
-  const all = Object.values(bookStatuses).sort((a,b) => (b.lastSeen || "").localeCompare(a.lastSeen || ""));
+  const all = Object.entries(bookStatuses).map(([key, book]) => ({ ...book, _key:key })).sort((a,b) => (b.lastSeen || "").localeCompare(a.lastSeen || ""));
   const monthKey = selectedDate.slice(0,7);
-  return { all, current: all.filter((book) => normalizeStatus(book.status) === "current"), finished: all.filter((book) => normalizeStatus(book.status) === "finished"), gaveUp: all.filter((book) => normalizeStatus(book.status) === "gave-up"), finishedThisMonth: all.filter((book) => normalizeStatus(book.status) === "finished" && String(book.statusDate || book.lastSeen || "").startsWith(monthKey)) };
+  const read = all.filter((book) => book.medium !== "listen");
+  const listen = all.filter((book) => book.medium === "listen");
+  return {
+    all,
+    read,
+    listen,
+    readCurrent: read.filter((book) => normalizeStatus(book.status) === "current"),
+    listenCurrent: listen.filter((book) => normalizeStatus(book.status) === "current"),
+    readFinished: read.filter((book) => normalizeStatus(book.status) === "finished"),
+    listenFinished: listen.filter((book) => normalizeStatus(book.status) === "finished"),
+    readFinishedThisMonth: read.filter((book) => normalizeStatus(book.status) === "finished" && String(book.statusDate || book.lastSeen || "").startsWith(monthKey)),
+    listenFinishedThisMonth: listen.filter((book) => normalizeStatus(book.status) === "finished" && String(book.statusDate || book.lastSeen || "").startsWith(monthKey))
+  };
 }
 function readingSnapshotHTML(bible, books) {
   return `<div class="book-grid">
-    ${snapshotRow("Bible books this month", bible.monthBooks.length ? bible.monthBooks.join(", ") : "Not logged", `${bible.monthChapters} ch`)}
-    ${snapshotRow("Bible progress this year", bible.yearBooks.length ? bible.yearBooks.join(", ") : "Not logged", `${bible.yearPercent}%`)}
-    ${snapshotRow("Completed Bible books", bible.completedBooks.length ? bible.completedBooks.join(", ") : "None yet", bible.completedBooks.length)}
-    ${snapshotRow("Other books", books.current.length ? books.current.map((x) => x.title).join(", ") : "No current books", `${books.finishedThisMonth.length} done`)}
+    ${snapshotRow("Bible read this month", bible.monthReadBooks.length ? bible.monthReadBooks.join(", ") : "Not logged", `${bible.monthReadChapters} ch`)}
+    ${snapshotRow("Audio Bible this month", bible.monthAudioBooks.length ? bible.monthAudioBooks.join(", ") : "Not logged", `${bible.monthAudioChapters} ch`)}
+    ${snapshotRow("Bible progress this year", bible.yearReadBooks.length ? bible.yearReadBooks.join(", ") : "Not logged", `${bible.yearReadPercent}% read`)}
+    ${snapshotRow("Audio Bible progress", bible.yearAudioBooks.length ? bible.yearAudioBooks.join(", ") : "Not logged", `${bible.yearAudioPercent}% listened`)}
+    ${snapshotRow("Completed Bible books read", bible.completedReadBooks.length ? bible.completedReadBooks.join(", ") : "None yet", bible.completedReadBooks.length)}
+    ${snapshotRow("Completed Audio Bible books", bible.completedAudioBooks.length ? bible.completedAudioBooks.join(", ") : "None yet", bible.completedAudioBooks.length)}
+    ${snapshotRow("Current books", books.readCurrent.length ? books.readCurrent.map((x) => x.title).join(", ") : "No current books", `${books.readFinishedThisMonth.length} done`)}
+    ${snapshotRow("Current audiobooks", books.listenCurrent.length ? books.listenCurrent.map((x) => x.title).join(", ") : "No current audio", `${books.listenFinishedThisMonth.length} done`)}
   </div>`;
 }
 function snapshotRow(title, subtitle, chip) {
   return `<article class="list-row"><div><div class="list-title">${escapeHTML(title)}</div><div class="list-subtitle">${escapeHTML(subtitle)}</div></div><span class="status-chip">${escapeHTML(chip)}</span></article>`;
 }
-function bookProgress(title) {
-  const key = cleanKey(title);
+function bookProgress(title, medium = "read") {
+  const key = cleanKey(title), isAudio = medium === "listen";
   const sessions = [];
-  loggedDates().forEach((date) => dayData(date).reading.forEach((item) => {
+  loggedDates().forEach((date) => dayData(date)[isAudio ? "audioReading" : "reading"].forEach((item) => {
     if (cleanKey(item.title) === key) sessions.push({ date, ...item });
   }));
   return {
     pages: total(sessions.map((item) => item.pages)),
+    minutes: total(sessions.map((item) => item.minutes)),
     latestChapters: [...sessions].reverse().find((item) => item.chapters)?.chapters || "",
     sessions: sessions.length,
     lastDate: sessions.length ? sessions[sessions.length - 1].date : "",
@@ -644,26 +733,29 @@ function bookProgress(title) {
 function bookListHTML(books, controls, mode = "history") {
   if (!books.length) return `<div class="empty">No books here yet.</div>`;
   return books.map((book) => {
-    const key = cleanKey(book.title);
-    const progress = bookProgress(book.title);
+    const medium = book.medium === "listen" ? "listen" : "read";
+    const key = book._key || `${medium}:${cleanKey(book.title)}`;
+    const progress = bookProgress(book.title, medium);
     const progressText = [
-      progress.pages ? `${fmt(progress.pages)} pages logged` : "",
+      medium === "listen" ? (progress.minutes ? `${fmt(progress.minutes)} min listened` : "") : (progress.pages ? `${fmt(progress.pages)} pages logged` : ""),
       progress.latestChapters ? `latest ch. ${progress.latestChapters}` : "",
       progress.sessions ? `${progress.sessions} sessions` : ""
     ].filter(Boolean).join(" - ");
     const finishedText = normalizeStatus(book.status) === "finished" ? `finished ${escapeHTML(book.statusDate || book.lastSeen || "date not logged")}` : `last read ${escapeHTML(book.lastSeen || "-")}`;
-    const subtitle = mode === "finished"
-      ? `${escapeHTML(book.category || "Other")} - ${finishedText}${progress.pages ? ` - ${fmt(progress.pages)} pages tracked` : ""}`
+    const subtitle = mode === "finished" || mode === "finished-audio"
+      ? `${escapeHTML(book.category || "Other")} - ${finishedText}${medium === "listen" && progress.minutes ? ` - ${fmt(progress.minutes)} min tracked` : ""}${medium !== "listen" && progress.pages ? ` - ${fmt(progress.pages)} pages tracked` : ""}`
       : `${escapeHTML(book.category || "Other")} - ${progressText || `first ${escapeHTML(book.firstSeen || "-")} - last ${escapeHTML(book.lastSeen || "-")}`}`;
-    return `<article class="list-row"><div><div class="list-title">${escapeHTML(book.title)}</div><div class="list-subtitle">${subtitle}</div></div><div><span class="status-chip ${normalizeStatus(book.status)}">${escapeHTML(normalizeStatus(book.status))}</span>${controls ? `<div class="form-actions"><button class="text-button" type="button" data-book-status="${escapeHTML(key)}" data-status="finished">Finished</button><button class="text-button" type="button" data-book-status="${escapeHTML(key)}" data-status="gave-up">Gave up</button></div>` : ""}</div></article>`;
+    return `<article class="list-row"><div><div class="list-title">${escapeHTML(book.title)}</div><div class="list-subtitle">${subtitle}</div></div><div><span class="status-chip">${medium === "listen" ? "audio" : "read"}</span><span class="status-chip ${normalizeStatus(book.status)}">${escapeHTML(normalizeStatus(book.status))}</span>${controls ? `<div class="form-actions"><button class="text-button" type="button" data-book-status="${escapeHTML(key)}" data-status="finished">Finished</button><button class="text-button" type="button" data-book-status="${escapeHTML(key)}" data-status="gave-up">Gave up</button></div>` : ""}</div></article>`;
   }).join("");
 }
 function readingLogTableHTML() {
   const rows = [];
   loggedDates().forEach((date) => {
     const d = dayData(date);
-    d.bible.forEach((item) => rows.push({ date, kind:"Bible", title:item.book, detail:item.chapters.length ? `Ch. ${item.chapters.join(", ")}` : "Chapters not logged", amount:item.minutes ? `${item.minutes} min` : "" }));
-    d.reading.forEach((item) => rows.push({ date, kind:"Book", title:item.title, detail:item.chapters ? `Ch. ${item.chapters}` : item.category || "Other", amount:item.pages ? `${item.pages} pages` : "" }));
+    d.bible.forEach((item) => rows.push({ date, kind:"Bible read", title:item.book, detail:item.chapters.length ? `Ch. ${item.chapters.join(", ")}` : "Chapters not logged", amount:item.minutes ? `${item.minutes} min` : "" }));
+    d.audioBible.forEach((item) => rows.push({ date, kind:"Audio Bible", title:item.book, detail:item.chapters.length ? `Ch. ${item.chapters.join(", ")}` : "Chapters not logged", amount:item.minutes ? `${item.minutes} min` : "" }));
+    d.reading.forEach((item) => rows.push({ date, kind:"Book read", title:item.title, detail:item.chapters ? `Ch. ${item.chapters}` : item.category || "Other", amount:item.pages ? `${item.pages} pages` : "" }));
+    d.audioReading.forEach((item) => rows.push({ date, kind:"Audiobook", title:item.title, detail:item.chapters ? `Ch. ${item.chapters}` : item.category || "Other", amount:item.minutes ? `${item.minutes} min` : "" }));
   });
   if (!rows.length) return `<div class="empty">No reading history yet.</div>`;
   return `<div class="table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Book</th><th>Detail</th><th>Amount</th></tr></thead><tbody>${rows.reverse().map((row) => `<tr><td>${row.date}</td><td>${row.kind}</td><td>${escapeHTML(row.title)}</td><td>${escapeHTML(row.detail)}</td><td>${escapeHTML(row.amount || "Not logged")}</td></tr>`).join("")}</tbody></table></div>`;
@@ -676,7 +768,7 @@ function skillListHTML() {
 function setActivePage(page, scroll = true) {
   activePage = page;
   document.querySelectorAll(".page").forEach((el) => el.classList.toggle("is-active", el.id === `page-${page}`));
-  document.querySelectorAll(".tab-button").forEach((button) => button.classList.toggle("is-active", button.dataset.page === page || (["goals","import","ai","ledger","share"].includes(page) && button.dataset.page === "more")));
+  document.querySelectorAll(".tab-button").forEach((button) => button.classList.toggle("is-active", button.dataset.page === page || (["goals","import","ai","ledger","share","data"].includes(page) && button.dataset.page === "more")));
   if (scroll) window.scrollTo({ top: 0, behavior: "smooth" });
 }
 function formObject(form) { return Object.fromEntries(new FormData(form).entries()); }
@@ -729,9 +821,20 @@ function normalizeImportedRecord(record) {
   if ("workout" in record) delete patch.workout;
   if ("bible_reading" in record) delete patch.bible_reading;
   if ("scripture" in record) delete patch.scripture;
+  if ("audio_bible" in record) delete patch.audio_bible;
+  if ("bible_audio" in record) delete patch.bible_audio;
+  if ("audio_scripture" in record) delete patch.audio_scripture;
+  if ("listen_bible" in record) delete patch.listen_bible;
+  if ("listened_bible" in record) delete patch.listened_bible;
   if ("reading_detail" in record) delete patch.reading_detail;
   if ("book" in record) delete patch.book;
   if ("books" in record) delete patch.books;
+  if ("audio_reading" in record) delete patch.audio_reading;
+  if ("audiobook" in record) delete patch.audiobook;
+  if ("audiobooks" in record) delete patch.audiobooks;
+  if ("listening" in record) delete patch.listening;
+  if ("books_listened" in record) delete patch.books_listened;
+  if ("listened_books" in record) delete patch.listened_books;
   if ("workouts" in record || "workout" in record) {
     patch.workouts = normalizeWorkouts(record.workouts || record.workout);
     const importedWorkoutMinutes = total(patch.workouts.map((workout) => workout.minutes));
@@ -739,7 +842,9 @@ function normalizeImportedRecord(record) {
     patch.workout_type = patch.workouts.map((workout) => workout.type).filter(Boolean).join(", ");
   }
   if ("bible" in record || "bible_reading" in record || "scripture" in record) patch.bible = normalizeBible(record.bible || record.bible_reading || record.scripture);
-  if ("reading" in record || "reading_detail" in record || "books" in record || "book" in record) patch.reading = normalizeReading(record.reading || record.reading_detail || record.books || record.book);
+  if ("audio_bible" in record || "bible_audio" in record || "audio_scripture" in record || "listen_bible" in record || "listened_bible" in record) patch.audio_bible = normalizeBible(record.audio_bible || record.bible_audio || record.audio_scripture || record.listen_bible || record.listened_bible);
+  if ("reading" in record || "reading_detail" in record || "books" in record || "book" in record) patch.reading = normalizeReading(record.reading || record.reading_detail || record.books || record.book, "read");
+  if ("audio_reading" in record || "audiobook" in record || "audiobooks" in record || "listening" in record || "books_listened" in record || "listened_books" in record) patch.audio_reading = normalizeReading(record.audio_reading || record.audiobook || record.audiobooks || record.listening || record.books_listened || record.listened_books, "listen");
   return { date, patch };
 }
 function deriveScreenTime(screen) {
@@ -774,10 +879,11 @@ function generateWeeklyReview(startDate) {
   const weights = data.filter((d) => d.weight !== null).map((d) => d.weight);
   const workouts = data.filter((d) => d.workoutMinutes);
   const bibleDays = data.filter((d) => d.bible.length);
+  const audioBibleDays = data.filter((d) => d.audioBible.length);
   const nutritionDays = data.filter((d) => d.calories !== null || d.protein !== null);
   const weightChange = weights.length >= 2 ? `${fmt(weights[weights.length - 1] - weights[0],1)} kg` : "Not logged";
-  const rows = data.map((d) => `| ${d.date} | ${md(d.weight,"kg",1)} | ${md(d.calories,"kcal")} | ${md(d.protein,"g")} | ${md(d.steps)} | ${md(d.sleepHours,"h",1)} | ${md(d.screenTotal,"min")} | ${d.bible.length ? d.bible.map((b) => `${b.book} ${b.chapters.join(",")}`).join("; ") : "Not logged"} | ${d.reading.length ? d.reading.map((b) => b.title).join("; ") : "Not logged"} |`);
-  return `---\ntype: Health Review\nweek_start: ${start}\nweek_end: ${end}\nsource: Life Tracking App\nstatus: Complete\n---\n\n# Health Review - ${start} to ${end}\n\n## Generated Summary\n${nutritionDays.length || workouts.length || bibleDays.length ? "This summary is based only on logged data for the selected week." : "No tracked data was logged for this week."}\n\n## Overview\n- average weight: ${md(average(weights),"kg",1)}\n- weight change from first logged weight to last logged weight: ${weightChange}\n- total steps: ${md(total(data.map((d) => d.steps)))}\n- average steps: ${md(average(data.map((d) => d.steps)))}\n- workouts completed: ${workouts.length}\n- average sleep duration: ${md(average(data.map((d) => d.sleepHours)),"h",1)}\n- average screen time: ${md(average(data.map((d) => d.screenTotal)),"min")}\n- nutrition logging completeness: ${nutritionDays.length}/7 days\n- creatine/supplement consistency: ${data.filter((d) => d.creatine !== null).length}/7 days\n- Bible reading days, if tracked: ${bibleDays.length}/7 days\n\n## Daily Breakdown\n| Day | Weight | Calories | Protein | Steps | Sleep | Screen | Bible | Books |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- |\n${rows.join("\n")}\n\n## Patterns Noticed From Data\n${patternsMarkdown(data)}\n\n## My Reflection\n- What went well?\n- What felt difficult?\n- What did I learn?\n- What do I want to adjust next week?\n\n## Next Week Focus\n- \n- \n- \n`;
+  const rows = data.map((d) => `| ${d.date} | ${md(d.weight,"kg",1)} | ${md(d.calories,"kcal")} | ${md(d.protein,"g")} | ${md(d.steps)} | ${md(d.sleepHours,"h",1)} | ${md(d.screenTotal,"min")} | ${d.bible.length ? d.bible.map((b) => `${b.book} ${b.chapters.join(",")}`).join("; ") : "Not logged"} | ${d.audioBible.length ? d.audioBible.map((b) => `${b.book} ${b.chapters.join(",")}`).join("; ") : "Not logged"} | ${d.reading.length ? d.reading.map((b) => b.title).join("; ") : "Not logged"} | ${d.audioReading.length ? d.audioReading.map((b) => b.title).join("; ") : "Not logged"} |`);
+  return `---\ntype: Health Review\nweek_start: ${start}\nweek_end: ${end}\nsource: Life Tracking App\nstatus: Complete\n---\n\n# Health Review - ${start} to ${end}\n\n## Generated Summary\n${nutritionDays.length || workouts.length || bibleDays.length || audioBibleDays.length ? "This summary is based only on logged data for the selected week." : "No tracked data was logged for this week."}\n\n## Overview\n- average weight: ${md(average(weights),"kg",1)}\n- weight change from first logged weight to last logged weight: ${weightChange}\n- total steps: ${md(total(data.map((d) => d.steps)))}\n- average steps: ${md(average(data.map((d) => d.steps)))}\n- workouts completed: ${workouts.length}\n- average sleep duration: ${md(average(data.map((d) => d.sleepHours)),"h",1)}\n- average screen time: ${md(average(data.map((d) => d.screenTotal)),"min")}\n- nutrition logging completeness: ${nutritionDays.length}/7 days\n- creatine/supplement consistency: ${data.filter((d) => d.creatine !== null).length}/7 days\n- Bible reading days, if tracked: ${bibleDays.length}/7 days\n- Audio Bible days, if tracked: ${audioBibleDays.length}/7 days\n\n## Daily Breakdown\n| Day | Weight | Calories | Protein | Steps | Sleep | Screen | Bible Read | Audio Bible | Books Read | Audiobooks |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n${rows.join("\n")}\n\n## Patterns Noticed From Data\n${patternsMarkdown(data)}\n\n## My Reflection\n- What went well?\n- What felt difficult?\n- What did I learn?\n- What do I want to adjust next week?\n\n## Next Week Focus\n- \n- \n- \n`;
 }
 function patternsMarkdown(data) {
   const lines = [];
@@ -789,11 +895,22 @@ function patternsMarkdown(data) {
 }
 function generateDailyNote() {
   const d = dayData(selectedDate);
-  return `# Daily Log - ${selectedDate}\n\n## Overview\n- weight: ${md(d.weight,"kg",1)}\n- calories: ${md(d.calories,"kcal")}\n- protein: ${md(d.protein,"g")}\n- steps: ${md(d.steps)}\n- workout: ${d.workoutMinutes ? `${fmt(d.workoutMinutes)} min ${d.workoutType || ""}`.trim() : "Not logged"}\n- sleep: ${md(d.sleepHours,"h",1)}\n- sleep score: ${md(d.sleepScore)}\n- screen time: ${md(d.screenTotal,"min")}\n- mood: ${md(d.mood)}\n- energy: ${md(d.energy)}\n\n## Reading\n- Bible: ${d.bible.length ? d.bible.map((b) => `${b.book} ${b.chapters.join(",")}`).join("; ") : "Not logged"}\n- Books: ${d.reading.length ? d.reading.map((b) => b.title).join("; ") : "Not logged"}\n\n## Notes\n${d.notes || ""}\n`;
+  return `# Daily Log - ${selectedDate}\n\n## Overview\n- weight: ${md(d.weight,"kg",1)}\n- calories: ${md(d.calories,"kcal")}\n- protein: ${md(d.protein,"g")}\n- steps: ${md(d.steps)}\n- workout: ${d.workoutMinutes ? `${fmt(d.workoutMinutes)} min ${d.workoutType || ""}`.trim() : "Not logged"}\n- sleep: ${md(d.sleepHours,"h",1)}\n- sleep score: ${md(d.sleepScore)}\n- screen time: ${md(d.screenTotal,"min")}\n- mood: ${md(d.mood)}\n- energy: ${md(d.energy)}\n\n## Reading\n- Bible read: ${d.bible.length ? d.bible.map((b) => `${b.book} ${b.chapters.join(",")}`).join("; ") : "Not logged"}\n- Audio Bible: ${d.audioBible.length ? d.audioBible.map((b) => `${b.book} ${b.chapters.join(",")}${b.minutes ? ` (${b.minutes} min)` : ""}`).join("; ") : "Not logged"}\n- Books read: ${d.reading.length ? d.reading.map((b) => b.title).join("; ") : "Not logged"}\n- Audiobooks: ${d.audioReading.length ? d.audioReading.map((b) => `${b.title}${b.minutes ? ` (${b.minutes} min)` : ""}`).join("; ") : "Not logged"}\n\n## Notes\n${d.notes || ""}\n`;
 }
-function buildBackup() { return JSON.stringify({ entries, settings, skills, bookStatuses, exportedAt:new Date().toISOString() }, null, 2); }
+function buildBackup() {
+  return JSON.stringify({
+    type: "reset-full-backup",
+    version: 2,
+    exportedAt: new Date().toISOString(),
+    entries,
+    settings,
+    skills,
+    bookStatuses,
+    storageKeys: STORAGE
+  }, null, 2);
+}
 function chatGPTPrompt() {
-  return `You are my structured life tracking assistant. Track my food, sleep, workouts, screen time, Bible reading, other reading, mood, energy, focus, weight, steps, water, caffeine, supplements, and notes throughout the day.\n\nWhen I say \"close the day\", \"export\", \"give me the JSON\", or anything similar, return ONE valid raw JSON object only. Do not use Markdown. Do not use a code block. Do not write explanations before or after it. Do not include comments or trailing commas. The first character of your reply must be { and the last character must be }.\n\nUse this exact shape when values are known:\n{\n  \"date\": \"YYYY-MM-DD\",\n  \"calories\": number,\n  \"protein\": number,\n  \"carbs\": number,\n  \"fat\": number,\n  \"fiber\": number,\n  \"water\": number,\n  \"caffeine\": number,\n  \"creatine\": number,\n  \"weight\": number,\n  \"steps\": number,\n  \"sleep\": { \"hours\": number, \"score\": number, \"bed_time\": \"HH:MM\", \"wake_time\": \"HH:MM\" },\n  \"workouts\": [{ \"type\": \"Cardio|Weight training|Calisthenics|Mobility|Other\", \"minutes\": number, \"notes\": \"\" }],\n  \"screen_time\": { \"total\": number, \"useful\": number, \"entertainment\": number, \"apps\": [{ \"name\": \"WhatsApp\", \"minutes\": number }] },\n  \"bible\": [{ \"book\": \"John\", \"chapters\": [3], \"minutes\": number }],\n  \"reading\": [{ \"title\": \"Book Title\", \"pages\": number, \"chapters\": \"\", \"category\": \"Self improvement|Faith|Fiction|Other\", \"status\": \"current|finished|gave-up\" }],\n  \"mood\": number,\n  \"energy\": number,\n  \"focus\": number,\n  \"stress\": number,\n  \"notes\": \"\"\n}\n\nRules:\n- Missing values should be omitted, not set to zero.\n- Only use zero when I explicitly logged zero.\n- For nutrition, read labels first when labels are available.\n- If calories are estimated or uncertain, slightly overestimate calories.\n- If protein or fiber are estimated or uncertain, slightly underestimate protein and fiber.\n- Do not invent exact precision when uncertain; use reasonable rounded numbers.\n- Any book mention should be status \"current\" unless I clearly say I finished it or gave up on it.\n- For screen time, count WhatsApp as useful screen time. Count all other screen time as entertainment unless I explicitly say it was work/useful.\n- If I paste this app's import error back to you, correct yourself by returning raw valid JSON only.`;
+  return `You are my structured life tracking assistant. Track my food, sleep, workouts, screen time, Bible reading, Audio Bible listening, book reading, audiobook listening, mood, energy, focus, weight, steps, water, caffeine, supplements, and notes throughout the day.\n\nWhen I say \"close the day\", \"export\", \"give me the JSON\", or anything similar, return ONE valid raw JSON object only. Do not use Markdown. Do not use a code block. Do not write explanations before or after it. Do not include comments or trailing commas. The first character of your reply must be { and the last character must be }.\n\nUse this exact shape when values are known:\n{\n  \"date\": \"YYYY-MM-DD\",\n  \"calories\": number,\n  \"protein\": number,\n  \"carbs\": number,\n  \"fat\": number,\n  \"fiber\": number,\n  \"water\": number,\n  \"caffeine\": number,\n  \"creatine\": number,\n  \"weight\": number,\n  \"steps\": number,\n  \"sleep\": { \"hours\": number, \"score\": number, \"bed_time\": \"HH:MM\", \"wake_time\": \"HH:MM\" },\n  \"workouts\": [{ \"type\": \"Cardio|Weight training|Calisthenics|Mobility|Other\", \"minutes\": number, \"notes\": \"\" }],\n  \"screen_time\": { \"total\": number, \"useful\": number, \"entertainment\": number, \"apps\": [{ \"name\": \"WhatsApp\", \"minutes\": number }] },\n  \"bible\": [{ \"book\": \"John\", \"chapters\": [3], \"minutes\": number }],\n  \"audio_bible\": [{ \"book\": \"Romans\", \"chapters\": [8], \"minutes\": number }],\n  \"reading\": [{ \"title\": \"Book Title\", \"pages\": number, \"chapters\": \"\", \"category\": \"Self improvement|Faith|Fiction|Other\", \"status\": \"current|finished|gave-up\" }],\n  \"audio_reading\": [{ \"title\": \"Audiobook Title\", \"minutes\": number, \"chapters\": \"\", \"category\": \"Audiobook|Self improvement|Faith|Fiction|Other\", \"status\": \"current|finished|gave-up\" }],\n  \"mood\": number,\n  \"energy\": number,\n  \"focus\": number,\n  \"stress\": number,\n  \"notes\": \"\"\n}\n\nRules:\n- Missing values should be omitted, not set to zero.\n- Only use zero when I explicitly logged zero.\n- Keep regular reading separate from audiobook listening.\n- Keep Bible reading separate from Audio Bible listening.\n- Any physical or digital book I read with my eyes goes in \"reading\".\n- Any audiobook goes in \"audio_reading\".\n- Any Bible I read goes in \"bible\".\n- Any Bible I listen to goes in \"audio_bible\".\n- For nutrition, read labels first when labels are available.\n- If calories are estimated or uncertain, slightly overestimate calories.\n- If protein or fiber are estimated or uncertain, slightly underestimate protein and fiber.\n- Do not invent exact precision when uncertain; use reasonable rounded numbers.\n- Any book or audiobook mention should be status \"current\" unless I clearly say I finished it or gave up on it.\n- For screen time, count WhatsApp as useful screen time. Count all other screen time as entertainment unless I explicitly say it was work/useful.\n- If I paste this app's import error back to you, correct yourself by returning raw valid JSON only.`;
 }
 async function copyText(text, label = "Copied") {
   try { await navigator.clipboard.writeText(text); toast(label); } catch { toast("Copy failed"); }
@@ -847,16 +964,17 @@ document.addEventListener("click", (event) => {
   if (event.target.id === "downloadBackup") {
     const url = URL.createObjectURL(new Blob([buildBackup()], { type:"application/json" }));
     const link = document.createElement("a");
-    link.href = url; link.download = `reset-backup-${selectedDate}.json`; link.click(); URL.revokeObjectURL(url);
+    link.href = url; link.download = `reset-full-backup-${selectedDate}.json`; link.click(); URL.revokeObjectURL(url);
   }
   if (event.target.id === "restoreBackup") {
     try {
       const data = JSON.parse(document.getElementById("restoreBox").value);
-      if (data.entries) entries = normalizeEntries(data.entries);
-      if (data.settings) settings = { ...defaults, ...data.settings };
-      if (Array.isArray(data.skills)) skills = data.skills;
-      if (data.bookStatuses) bookStatuses = data.bookStatuses;
-      saveEntries(); saveSettings(); saveSkills(); saveBooks(); renderAll(); toast("Backup restored");
+      if (!data.entries && !data.history) throw new Error("Missing entries");
+      entries = normalizeEntries(data.entries || data.history);
+      settings = { ...defaults, ...(data.settings || {}) };
+      skills = Array.isArray(data.skills) ? data.skills : [];
+      bookStatuses = data.bookStatuses || data.books || {};
+      saveEntries(); saveSettings(); saveSkills(); saveBooks(); syncBookStatusesFromEntries(); renderAll(); toast("Backup restored");
     } catch { toast("Restore failed"); }
   }
 });
@@ -891,7 +1009,9 @@ document.addEventListener("submit", (event) => {
   if (form.id === "readingForm") {
     const patch = {};
     if (values.bible_book) patch.bible = [{ book:values.bible_book, chapters:parseChapters(values.bible_chapters) }];
-    if (values.book_title) patch.reading = [{ title:values.book_title, pages:num(values.book_pages), chapters:values.book_chapters, status:normalizeStatus(values.book_status), category:"Other" }];
+    if (values.audio_bible_book) patch.audio_bible = [{ book:values.audio_bible_book, chapters:parseChapters(values.audio_bible_chapters), minutes:num(values.audio_bible_minutes) }];
+    if (values.book_title) patch.reading = [{ title:values.book_title, pages:num(values.book_pages), chapters:values.book_chapters, status:normalizeStatus(values.book_status), category:"Other", medium:"read" }];
+    if (values.audio_book_title) patch.audio_reading = [{ title:values.audio_book_title, minutes:num(values.audio_book_minutes), chapters:values.audio_book_chapters, status:normalizeStatus(values.audio_book_status), category:"Audiobook", medium:"listen" }];
     updateEntry(selectedDate, patch); toast("Reading saved");
   }
   if (form.id === "skillForm") { skills.push({ date:selectedDate, skill:values.skill, value:values.value, unit:values.unit, progression:values.progression }); saveSkills(); renderAll(); toast("PR saved"); }
