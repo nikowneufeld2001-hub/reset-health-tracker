@@ -236,9 +236,21 @@ function normalizeReading(value, medium = "read") {
   if (value && !Array.isArray(value) && typeof value === "object" && Array.isArray(value.sessions)) return normalizeReading(value.sessions, medium);
   return listify(value).flatMap((item) => {
     if (!item) return [];
-    if (typeof item === "string") return [{ title: item, pages: null, minutes: null, chapters: "", category: "Other", status: "current", medium, notes: "" }];
+    if (typeof item === "string") return [{ title: item, author: "", library: "General Library", pages: null, minutes: null, chapters: "", category: "Other", status: "current", medium, notes: "" }];
     const title = item.title || item.book || item.name || "";
-    return title ? [{ title, pages: firstNumber(item.pages, item.page_count, item.pages_read), minutes: firstNumber(item.minutes, item.time, item.duration), chapters: item.chapters || item.chapter || "", category: item.category || item.type || "Other", status: normalizeStatus(item.status || item.state || "current"), medium: item.medium || medium, notes: item.notes || "" }] : [];
+    const itemMedium = item.medium || medium;
+    return title ? [{
+      title,
+      author: item.author || item.writer || "",
+      library: readingLibraryName(item.library || item.owner || item.source || item.platform || item.service || item.app || item.listened_on),
+      pages: firstNumber(item.pages, item.page_count, item.pages_read),
+      minutes: firstNumber(item.minutes, item.time, item.duration),
+      chapters: item.chapters || item.chapter || "",
+      category: item.category || item.type || (itemMedium === "listen" ? "Audiobook" : "Other"),
+      status: normalizeStatus(item.status || item.state || "current"),
+      medium: itemMedium,
+      notes: item.notes || ""
+    }] : [];
   });
 }
 function normalizeStatus(value) {
@@ -247,31 +259,87 @@ function normalizeStatus(value) {
   if (["gave-up","abandoned","quit","dropped"].includes(key)) return "gave-up";
   return "current";
 }
+function readingLibraryName(value) {
+  const text = String(value || "").trim();
+  return text || "General Library";
+}
+function bookKey(title, medium = "read") {
+  const key = cleanKey(title);
+  return key ? `${medium === "listen" ? "listen" : "read"}:${key}` : "";
+}
+function mergeBookRecord(existing = {}, update = {}) {
+  const aliases = [...new Set([...(existing.aliases || []), ...(update.aliases || []), existing.title, update.title].map(cleanKey).filter(Boolean))];
+  const status = normalizeStatus(update.status || existing.status || "current");
+  const next = {
+    title: update.title || existing.title || "",
+    author: update.author || existing.author || "",
+    library: readingLibraryName(update.library || existing.library),
+    medium: update.medium === "listen" || existing.medium === "listen" ? "listen" : "read",
+    firstSeen: [existing.firstSeen, update.firstSeen].filter(Boolean).sort()[0] || "",
+    lastSeen: [existing.lastSeen, update.lastSeen].filter(Boolean).sort().slice(-1)[0] || "",
+    status: existing.status && !update.status ? normalizeStatus(existing.status) : status,
+    category: update.category || existing.category || (update.medium === "listen" ? "Audiobook" : "Other"),
+    statusDate: update.statusDate || existing.statusDate || "",
+    notes: update.notes || existing.notes || "",
+    aliases
+  };
+  if (status !== "current" && update.statusDate) {
+    next.status = status;
+    next.statusDate = update.statusDate;
+  }
+  return next;
+}
+function resolveBookKey(title, medium = "read", statuses = bookStatuses) {
+  const direct = bookKey(title, medium);
+  if (statuses[direct]) return direct;
+  const wanted = cleanKey(title);
+  const prefix = `${medium === "listen" ? "listen" : "read"}:`;
+  const match = Object.entries(statuses || {}).find(([key, book]) => key.startsWith(prefix) && (book.aliases || []).map(cleanKey).includes(wanted));
+  return match ? match[0] : direct;
+}
+function canonicalizeBookStatuses(source = {}) {
+  const next = {};
+  Object.entries(source || {}).forEach(([key, book]) => {
+    const medium = book?.medium === "listen" || String(key).startsWith("listen:") ? "listen" : "read";
+    const title = book?.title || String(key).replace(/^(read|listen):/, "");
+    const canonicalKey = bookKey(title, medium);
+    if (!canonicalKey) return;
+    next[canonicalKey] = mergeBookRecord(next[canonicalKey], {
+      ...book,
+      title,
+      medium,
+      library: readingLibraryName(book?.library || book?.source),
+      status: normalizeStatus(book?.status),
+      firstSeen: book?.firstSeen || "",
+      lastSeen: book?.lastSeen || "",
+      statusDate: book?.statusDate || ""
+    });
+  });
+  return next;
+}
 
 function syncBookStatusesFromEntries() {
-  const previous = bookStatuses || {};
-  const next = { ...previous };
+  const next = canonicalizeBookStatuses(bookStatuses || {});
   loggedDates().forEach((date) => {
     const d = dayData(date);
     [...d.reading, ...d.audioReading].forEach((book) => {
-    const titleKey = cleanKey(book.title);
-    if (!titleKey) return;
-    const medium = book.medium === "listen" ? "listen" : "read";
-    const key = `${medium}:${titleKey}`;
-    const existing = next[key] || {};
-    next[key] = {
-      title: existing.title || book.title,
-      medium,
-      firstSeen: existing.firstSeen || date,
-      lastSeen: date > (existing.lastSeen || "") ? date : existing.lastSeen || date,
-      status: existing.status || normalizeStatus(book.status),
-      category: existing.category || book.category || "Other",
-      statusDate: existing.statusDate || ""
-    };
-    if (normalizeStatus(book.status) !== "current") {
-      next[key].status = normalizeStatus(book.status);
-      next[key].statusDate = date;
-    }
+      const medium = book.medium === "listen" ? "listen" : "read";
+      const key = resolveBookKey(book.title, medium, next);
+      if (!key) return;
+      const importedStatus = normalizeStatus(book.status);
+      next[key] = mergeBookRecord(next[key], {
+        title: book.title,
+        author: book.author || "",
+        library: readingLibraryName(book.library),
+        medium,
+        firstSeen: date,
+        lastSeen: date,
+        status: importedStatus,
+        category: book.category || (medium === "listen" ? "Audiobook" : "Other"),
+        statusDate: importedStatus !== "current" ? date : "",
+        notes: book.notes || "",
+        aliases: [book.title]
+      });
     });
   });
   bookStatuses = next;
@@ -514,12 +582,24 @@ function renderReading() {
     <details class="detail-card" open><summary>Bible Summary</summary><div class="detail-body">${readingSnapshotHTML(bible, books)}</div></details>
     <details class="detail-card" open><summary>Log Reading</summary><div class="detail-body"><form id="readingForm" class="form-grid">
       ${select("bible_book","Bible book read","",["",...BIBLE_BOOKS.map((x) => x[0])])}${input("bible_chapters","Bible chapters read","","text")}${select("audio_bible_book","Audio Bible book","",["",...BIBLE_BOOKS.map((x) => x[0])])}${input("audio_bible_chapters","Audio Bible chapters","","text")}${input("audio_bible_minutes","Audio Bible minutes","","number")}
-      ${input("book_title","Book read","","text")}${input("book_pages","Pages read","","number")}${input("book_chapters","Book chapters read","","text")}${select("book_status","Book status","current",["current","finished","gave-up"])}
-      ${input("audio_book_title","Audiobook listened","","text")}${input("audio_book_minutes","Audiobook minutes","","number")}${input("audio_book_chapters","Audiobook chapters","","text")}${select("audio_book_status","Audiobook status","current",["current","finished","gave-up"])}
+      ${input("book_title","Book read","","text")}${input("book_author","Book author","","text")}${input("book_library","Book library or owner","","text")}${input("book_pages","Pages read","","number")}${input("book_chapters","Book chapters read","","text")}${select("book_status","Book status","current",["current","finished","gave-up"])}
+      ${input("audio_book_title","Audiobook listened","","text")}${input("audio_book_author","Audiobook author","","text")}${input("audio_book_source","Audiobook source","","text")}${input("audio_book_minutes","Audiobook minutes","","number")}${input("audio_book_chapters","Audiobook chapters","","text")}${select("audio_book_status","Audiobook status","current",["current","finished","gave-up"])}
       <div class="form-actions"><button class="primary-button" type="submit">Save Reading</button></div>
     </form></div></details>
     <details class="detail-card" id="reading-current-details"><summary>Currently Reading</summary><div class="detail-body"><div class="list">${bookListHTML(books.readCurrent, true, "current")}</div></div></details>
     <details class="detail-card" id="reading-audio-details"><summary>Currently Listening</summary><div class="detail-body"><div class="list">${bookListHTML(books.listenCurrent, true, "audio")}</div></div></details>
+    <details class="detail-card" id="reading-libraries-details"><summary>Libraries</summary><div class="detail-body">${libraryListHTML()}</div></details>
+    <details class="detail-card"><summary>Manage Library Items</summary><div class="detail-body">
+      <form id="bookEditForm" class="form-grid">
+        ${bookSelect("book_key","Book to edit")}${input("edit_title","Title","","text")}${input("edit_author","Author","","text")}${input("edit_library","Library or source","","text")}${select("edit_medium","Format","read",["read","listen"])}${select("edit_status","Status","current",["current","finished","gave-up"])}
+        <div class="form-actions"><button class="primary-button" type="submit">Save / Consolidate</button></div>
+      </form>
+      <form id="manualBookForm" class="form-grid">
+        ${input("manual_title","Add title","","text")}${input("manual_author","Author","","text")}${input("manual_library","Library or source","","text")}${select("manual_medium","Format","read",["read","listen"])}${select("manual_status","Status","current",["current","finished","gave-up"])}
+        <div class="form-actions"><button class="soft-button" type="submit">Add to Library</button></div>
+      </form>
+      <p class="panel-note">To consolidate duplicates, choose one duplicate, edit the title to match the version you want to keep, then save.</p>
+    </div></details>
     <details class="detail-card" id="reading-finished-details"><summary>Finished Books</summary><div class="detail-body"><div class="list">${bookListHTML(books.readFinished, false, "finished")}</div></div></details>
     <details class="detail-card" id="reading-finished-audio-details"><summary>Finished Audiobooks</summary><div class="detail-body"><div class="list">${bookListHTML(books.listenFinished, false, "finished-audio")}</div></div></details>
     <section class="panel"><div class="panel-head"><h3>Full Book History</h3><span class="status-chip">${books.all.length}</span></div><div class="list">${bookListHTML(books.all, false, "history")}</div></section>
@@ -612,18 +692,69 @@ function insightCards() {
   const days = datesBack(14).map((date) => ({ date, ...dayData(date) }));
   const logged = days.filter((d) => loggedDates().includes(d.date));
   const nutritionDays = logged.filter((d) => d.calories !== null || d.protein !== null).length;
-  const sleepEnergy = logged.filter((d) => d.sleepHours !== null && d.energy !== null);
-  const workoutDays = logged.filter((d) => d.workoutMinutes).length;
   const bible = bibleSummary();
-  return [
+  const insights = dataInsightCards(logged);
+  const cards = [
     panelSmall("Nutrition consistency", `${nutritionDays}/${logged.length || 14} logged days`, nutritionDays ? "Logged data can now support weekly averages." : "No nutrition records in this window yet."),
-    panelSmall("Sleep and energy", `${sleepEnergy.length} paired days`, sleepEnergy.length >= 3 ? "Logged data suggests sleep and energy can be compared cautiously." : "Log sleep and energy on the same days to surface a pattern."),
-    panelSmall("Movement rhythm", `${workoutDays} workout days`, workoutDays >= 3 ? "This week has a steady workout signal." : "A few more workout entries would make trends more useful."),
     panelSmall("Reading trail", `${bible.yearReadChapters}/${TOTAL_BIBLE_CHAPTERS} Bible chapters read`, `${bible.yearReadPercent}% read and ${bible.yearAudioPercent}% listened this year.`)
   ];
+  return [...insights.map((item) => panelSmall(item.title, item.metric, item.copy)), ...cards].slice(0, 8);
 }
 function panelSmall(title, metric, copy) {
   return `<article class="panel"><div class="panel-head"><h3>${escapeHTML(title)}</h3><span class="status-chip">${escapeHTML(metric)}</span></div><p class="panel-note">${escapeHTML(copy)}</p></article>`;
+}
+function pairedValues(data, xKey, yKey) {
+  return data.map((d) => [num(d[xKey]), num(d[yKey])]).filter(([x, y]) => x !== null && y !== null);
+}
+function pearson(pairs) {
+  if (pairs.length < 3) return null;
+  const xs = pairs.map(([x]) => x), ys = pairs.map(([, y]) => y);
+  const xAvg = average(xs), yAvg = average(ys);
+  const numerator = pairs.reduce((sum, [x, y]) => sum + ((x - xAvg) * (y - yAvg)), 0);
+  const xDen = Math.sqrt(xs.reduce((sum, x) => sum + ((x - xAvg) ** 2), 0));
+  const yDen = Math.sqrt(ys.reduce((sum, y) => sum + ((y - yAvg) ** 2), 0));
+  return xDen && yDen ? numerator / (xDen * yDen) : null;
+}
+function comparisonInsight(data, title, metric, condition, valueKey, positiveText, negativeText) {
+  const yes = data.filter((d) => condition(d)).map((d) => num(d[valueKey])).filter((value) => value !== null);
+  const no = data.filter((d) => !condition(d)).map((d) => num(d[valueKey])).filter((value) => value !== null);
+  if (yes.length < 2 || no.length < 2) return null;
+  const diff = average(yes) - average(no);
+  if (Math.abs(diff) < 0.4) return { title, metric:`${yes.length}+${no.length} days`, copy:`Logged data shows ${metric} was about the same across those day types.` };
+  return { title, metric:`${diff > 0 ? "+" : ""}${fmt(diff,1)}`, copy: diff > 0 ? positiveText(diff) : negativeText(diff) };
+}
+function correlationInsight(data, title, xKey, yKey, xLabel, yLabel) {
+  const pairs = pairedValues(data, xKey, yKey);
+  const r = pearson(pairs);
+  if (r === null) return null;
+  if (Math.abs(r) < 0.35) return { title, metric:`${pairs.length} paired days`, copy:`Logged data does not show a clear ${xLabel}-${yLabel} pattern in this window.` };
+  const direction = r > 0 ? "higher" : "lower";
+  const strength = Math.abs(r) >= 0.6 ? "fairly clear" : "mild";
+  return { title, metric:`r ${fmt(r,2)}`, copy:`Logged data suggests a ${strength} pattern: ${direction} ${xLabel} tended to appear with ${r > 0 ? "higher" : "lower"} ${yLabel}.` };
+}
+function dataInsightCards(data) {
+  const insights = [
+    correlationInsight(data, "Sleep and energy", "sleepHours", "energy", "sleep", "energy"),
+    correlationInsight(data, "Caffeine and energy", "caffeine", "energy", "caffeine", "energy"),
+    correlationInsight(data, "Calories and energy", "calories", "energy", "calories", "energy"),
+    correlationInsight(data, "Protein and mood", "protein", "mood", "protein", "mood"),
+    correlationInsight(data, "Entertainment and mood", "screenEntertainment", "mood", "entertainment screen time", "mood"),
+    correlationInsight(data, "Steps and mood", "steps", "mood", "steps", "mood"),
+    comparisonInsight(data, "Workout days", "energy", (d) => (num(d.workoutMinutes) || 0) > 0, "energy",
+      (diff) => `Logged data suggests workout days averaged ${fmt(diff,1)} points higher energy than non-workout days.`,
+      (diff) => `Logged data suggests workout days averaged ${fmt(Math.abs(diff),1)} points lower energy than non-workout days. This may reflect training fatigue or timing.`),
+    comparisonInsight(data, "Creatine days", "energy", (d) => num(d.creatine) !== null && num(d.creatine) > 0, "energy",
+      (diff) => `Logged data suggests creatine/supplement days averaged ${fmt(diff,1)} points higher energy.`,
+      (diff) => `Logged data suggests creatine/supplement days averaged ${fmt(Math.abs(diff),1)} points lower energy in this window.`),
+    comparisonInsight(data, "Calorie target", "energy", (d) => num(d.calories) !== null && num(settings.calorieGoal) && num(d.calories) <= num(settings.calorieGoal), "energy",
+      (diff) => `Logged data suggests days at or under your calorie target averaged ${fmt(diff,1)} points higher energy.`,
+      (diff) => `Logged data suggests days at or under your calorie target averaged ${fmt(Math.abs(diff),1)} points lower energy, which may matter during a cut.`),
+    comparisonInsight(data, "Reading days", "focus", (d) => d.reading.length || d.audioReading.length || d.bible.length || d.audioBible.length, "focus",
+      (diff) => `Logged data suggests reading/listening days averaged ${fmt(diff,1)} points higher focus.`,
+      (diff) => `Logged data suggests reading/listening days averaged ${fmt(Math.abs(diff),1)} points lower focus in this window.`)
+  ].filter(Boolean);
+  if (insights.length) return insights;
+  return [{ title:"Patterns", metric:`${data.length} logged days`, copy:"Not enough paired data yet. Keep logging sleep, screen time, movement, mood, and energy on the same days." }];
 }
 
 function bibleSummary() {
@@ -684,7 +815,7 @@ function completedBibleBooks(chapterSet) {
   return BIBLE_BOOKS.filter(([book, chapters]) => Array.from({ length: chapters }, (_, i) => i + 1).every((chapter) => chapterSet.has(`${book}:${chapter}`))).map(([book]) => book);
 }
 function readingSummary() {
-  const all = Object.entries(bookStatuses).map(([key, book]) => ({ ...book, _key:key })).sort((a,b) => (b.lastSeen || "").localeCompare(a.lastSeen || ""));
+  const all = Object.entries(bookStatuses).map(([key, book]) => ({ ...book, library: readingLibraryName(book.library), _key:key })).sort((a,b) => (b.lastSeen || "").localeCompare(a.lastSeen || ""));
   const monthKey = selectedDate.slice(0,7);
   const read = all.filter((book) => book.medium !== "listen");
   const listen = all.filter((book) => book.medium === "listen");
@@ -699,6 +830,31 @@ function readingSummary() {
     readFinishedThisMonth: read.filter((book) => normalizeStatus(book.status) === "finished" && String(book.statusDate || book.lastSeen || "").startsWith(monthKey)),
     listenFinishedThisMonth: listen.filter((book) => normalizeStatus(book.status) === "finished" && String(book.statusDate || book.lastSeen || "").startsWith(monthKey))
   };
+}
+function bookOptionList() {
+  return Object.entries(bookStatuses).map(([key, book]) => ({ key, label: `${book.title || key} (${book.medium === "listen" ? "audio" : "read"})` })).sort((a,b) => a.label.localeCompare(b.label));
+}
+function bookSelect(name, label) {
+  const options = bookOptionList();
+  return `<div class="form-row"><label for="${name}">${escapeHTML(label)}</label><select id="${name}" name="${name}"><option value="">Choose a book</option>${options.map((option) => `<option value="${escapeHTML(option.key)}">${escapeHTML(option.label)}</option>`).join("")}</select></div>`;
+}
+function librarySummary() {
+  const groups = {};
+  readingSummary().all.forEach((book) => {
+    const library = readingLibraryName(book.library);
+    if (!groups[library]) groups[library] = [];
+    groups[library].push(book);
+  });
+  return Object.entries(groups).sort(([a], [b]) => a.localeCompare(b));
+}
+function libraryListHTML() {
+  const libraries = librarySummary();
+  if (!libraries.length) return `<div class="empty">No library items yet.</div>`;
+  return libraries.map(([library, books]) => {
+    const readCount = books.filter((book) => book.medium !== "listen").length;
+    const listenCount = books.filter((book) => book.medium === "listen").length;
+    return `<details class="library-folder"><summary><span>${escapeHTML(library)}</span><span class="status-chip">${readCount} read / ${listenCount} audio</span></summary><div class="list">${bookListHTML(books, false, "library")}</div></details>`;
+  }).join("");
 }
 function readingSnapshotHTML(bible, books) {
   return `<div class="book-grid">
@@ -741,10 +897,11 @@ function bookListHTML(books, controls, mode = "history") {
       progress.latestChapters ? `latest ch. ${progress.latestChapters}` : "",
       progress.sessions ? `${progress.sessions} sessions` : ""
     ].filter(Boolean).join(" - ");
+    const metaText = [book.author ? `by ${book.author}` : "", readingLibraryName(book.library)].filter(Boolean).join(" - ");
     const finishedText = normalizeStatus(book.status) === "finished" ? `finished ${escapeHTML(book.statusDate || book.lastSeen || "date not logged")}` : `last read ${escapeHTML(book.lastSeen || "-")}`;
     const subtitle = mode === "finished" || mode === "finished-audio"
-      ? `${escapeHTML(book.category || "Other")} - ${finishedText}${medium === "listen" && progress.minutes ? ` - ${fmt(progress.minutes)} min tracked` : ""}${medium !== "listen" && progress.pages ? ` - ${fmt(progress.pages)} pages tracked` : ""}`
-      : `${escapeHTML(book.category || "Other")} - ${progressText || `first ${escapeHTML(book.firstSeen || "-")} - last ${escapeHTML(book.lastSeen || "-")}`}`;
+      ? `${escapeHTML(metaText || book.category || "Other")} - ${finishedText}${medium === "listen" && progress.minutes ? ` - ${fmt(progress.minutes)} min tracked` : ""}${medium !== "listen" && progress.pages ? ` - ${fmt(progress.pages)} pages tracked` : ""}`
+      : `${escapeHTML(metaText || book.category || "Other")} - ${progressText || `first ${escapeHTML(book.firstSeen || "-")} - last ${escapeHTML(book.lastSeen || "-")}`}`;
     return `<article class="list-row"><div><div class="list-title">${escapeHTML(book.title)}</div><div class="list-subtitle">${subtitle}</div></div><div><span class="status-chip">${medium === "listen" ? "audio" : "read"}</span><span class="status-chip ${normalizeStatus(book.status)}">${escapeHTML(normalizeStatus(book.status))}</span>${controls ? `<div class="form-actions"><button class="text-button" type="button" data-book-status="${escapeHTML(key)}" data-status="finished">Finished</button><button class="text-button" type="button" data-book-status="${escapeHTML(key)}" data-status="gave-up">Gave up</button></div>` : ""}</div></article>`;
   }).join("");
 }
@@ -754,8 +911,8 @@ function readingLogTableHTML() {
     const d = dayData(date);
     d.bible.forEach((item) => rows.push({ date, kind:"Bible read", title:item.book, detail:item.chapters.length ? `Ch. ${item.chapters.join(", ")}` : "Chapters not logged", amount:item.minutes ? `${item.minutes} min` : "" }));
     d.audioBible.forEach((item) => rows.push({ date, kind:"Audio Bible", title:item.book, detail:item.chapters.length ? `Ch. ${item.chapters.join(", ")}` : "Chapters not logged", amount:item.minutes ? `${item.minutes} min` : "" }));
-    d.reading.forEach((item) => rows.push({ date, kind:"Book read", title:item.title, detail:item.chapters ? `Ch. ${item.chapters}` : item.category || "Other", amount:item.pages ? `${item.pages} pages` : "" }));
-    d.audioReading.forEach((item) => rows.push({ date, kind:"Audiobook", title:item.title, detail:item.chapters ? `Ch. ${item.chapters}` : item.category || "Other", amount:item.minutes ? `${item.minutes} min` : "" }));
+    d.reading.forEach((item) => rows.push({ date, kind:"Book read", title:item.title, detail:[item.chapters ? `Ch. ${item.chapters}` : "", item.author ? `by ${item.author}` : "", readingLibraryName(item.library)].filter(Boolean).join(" - "), amount:item.pages ? `${item.pages} pages` : "" }));
+    d.audioReading.forEach((item) => rows.push({ date, kind:"Audiobook", title:item.title, detail:[item.chapters ? `Ch. ${item.chapters}` : "", item.author ? `by ${item.author}` : "", readingLibraryName(item.library)].filter(Boolean).join(" - "), amount:item.minutes ? `${item.minutes} min` : "" }));
   });
   if (!rows.length) return `<div class="empty">No reading history yet.</div>`;
   return `<div class="table-wrap"><table><thead><tr><th>Date</th><th>Type</th><th>Book</th><th>Detail</th><th>Amount</th></tr></thead><tbody>${rows.reverse().map((row) => `<tr><td>${row.date}</td><td>${row.kind}</td><td>${escapeHTML(row.title)}</td><td>${escapeHTML(row.detail)}</td><td>${escapeHTML(row.amount || "Not logged")}</td></tr>`).join("")}</tbody></table></div>`;
@@ -866,6 +1023,49 @@ function deriveScreenTime(screen) {
     entertainment:firstNumber(screen.entertainment, screen.recreation, screen.social)
   };
 }
+function saveManualBook(values, prefix = "manual") {
+  const title = values[`${prefix}_title`] || values.edit_title;
+  const medium = values[`${prefix}_medium`] || values.edit_medium || "read";
+  const key = bookKey(title, medium);
+  if (!key) throw new Error("Book title is required.");
+  const status = normalizeStatus(values[`${prefix}_status`] || values.edit_status);
+  const library = readingLibraryName(values[`${prefix}_library`] || values.edit_library);
+  const update = {
+    title,
+    author: values[`${prefix}_author`] || values.edit_author || "",
+    library,
+    medium,
+    firstSeen: selectedDate,
+    lastSeen: selectedDate,
+    status,
+    category: medium === "listen" ? "Audiobook" : "Other",
+    statusDate: status !== "current" ? selectedDate : ""
+  };
+  bookStatuses[key] = mergeBookRecord(bookStatuses[key], update);
+  saveBooks();
+}
+function editBookRecord(values) {
+  const oldKey = values.book_key;
+  const existing = bookStatuses[oldKey];
+  if (!existing) throw new Error("Choose a book to edit.");
+  const title = values.edit_title || existing.title;
+  const medium = values.edit_medium || existing.medium || "read";
+  const newKey = bookKey(title, medium);
+  if (!newKey) throw new Error("Title is required.");
+  const update = {
+    ...existing,
+    title,
+    author: values.edit_author || existing.author || "",
+    library: readingLibraryName(values.edit_library || existing.library),
+    medium,
+    status: normalizeStatus(values.edit_status || existing.status),
+    statusDate: normalizeStatus(values.edit_status || existing.status) !== "current" ? (existing.statusDate || selectedDate) : existing.statusDate,
+    aliases: [...(existing.aliases || []), existing.title]
+  };
+  if (oldKey !== newKey) delete bookStatuses[oldKey];
+  bookStatuses[newKey] = mergeBookRecord(bookStatuses[newKey], update);
+  saveBooks();
+}
 
 function weekStartOf(dateKey) {
   const date = parseDateKey(dateKey), day = date.getDay();
@@ -886,12 +1086,7 @@ function generateWeeklyReview(startDate) {
   return `---\ntype: Health Review\nweek_start: ${start}\nweek_end: ${end}\nsource: Life Tracking App\nstatus: Complete\n---\n\n# Health Review - ${start} to ${end}\n\n## Generated Summary\n${nutritionDays.length || workouts.length || bibleDays.length || audioBibleDays.length ? "This summary is based only on logged data for the selected week." : "No tracked data was logged for this week."}\n\n## Overview\n- average weight: ${md(average(weights),"kg",1)}\n- weight change from first logged weight to last logged weight: ${weightChange}\n- total steps: ${md(total(data.map((d) => d.steps)))}\n- average steps: ${md(average(data.map((d) => d.steps)))}\n- workouts completed: ${workouts.length}\n- average sleep duration: ${md(average(data.map((d) => d.sleepHours)),"h",1)}\n- average screen time: ${md(average(data.map((d) => d.screenTotal)),"min")}\n- nutrition logging completeness: ${nutritionDays.length}/7 days\n- creatine/supplement consistency: ${data.filter((d) => d.creatine !== null).length}/7 days\n- Bible reading days, if tracked: ${bibleDays.length}/7 days\n- Audio Bible days, if tracked: ${audioBibleDays.length}/7 days\n\n## Daily Breakdown\n| Day | Weight | Calories | Protein | Steps | Sleep | Screen | Bible Read | Audio Bible | Books Read | Audiobooks |\n| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |\n${rows.join("\n")}\n\n## Patterns Noticed From Data\n${patternsMarkdown(data)}\n\n## My Reflection\n- What went well?\n- What felt difficult?\n- What did I learn?\n- What do I want to adjust next week?\n\n## Next Week Focus\n- \n- \n- \n`;
 }
 function patternsMarkdown(data) {
-  const lines = [];
-  if (data.filter((d) => d.sleepHours !== null && d.energy !== null).length >= 3) lines.push("- Logged data suggests sleep and energy can be compared this week, but conclusions should stay cautious.");
-  if (data.filter((d) => d.screenEntertainment !== null && d.mood !== null).length >= 3) lines.push("- Logged data suggests screen entertainment and mood have enough paired entries to review manually.");
-  if (data.filter((d) => d.workoutMinutes && d.mood !== null).length >= 2) lines.push("- Logged data suggests workout days may be worth comparing against mood and energy.");
-  if (!lines.length) lines.push("- Not enough paired data was logged to support a pattern yet.");
-  return lines.join("\n");
+  return dataInsightCards(data).map((item) => `- ${item.copy}`).join("\n");
 }
 function generateDailyNote() {
   const d = dayData(selectedDate);
@@ -900,7 +1095,7 @@ function generateDailyNote() {
 function buildBackup() {
   return JSON.stringify({
     type: "reset-full-backup",
-    version: 2,
+    version: 3,
     exportedAt: new Date().toISOString(),
     entries,
     settings,
@@ -910,7 +1105,7 @@ function buildBackup() {
   }, null, 2);
 }
 function chatGPTPrompt() {
-  return `You are my structured life tracking assistant. Track my food, sleep, workouts, screen time, Bible reading, Audio Bible listening, book reading, audiobook listening, mood, energy, focus, weight, steps, water, caffeine, supplements, and notes throughout the day.\n\nWhen I say \"close the day\", \"export\", \"give me the JSON\", or anything similar, return ONE valid raw JSON object only. Do not use Markdown. Do not use a code block. Do not write explanations before or after it. Do not include comments or trailing commas. The first character of your reply must be { and the last character must be }.\n\nUse this exact shape when values are known:\n{\n  \"date\": \"YYYY-MM-DD\",\n  \"calories\": number,\n  \"protein\": number,\n  \"carbs\": number,\n  \"fat\": number,\n  \"fiber\": number,\n  \"water\": number,\n  \"caffeine\": number,\n  \"creatine\": number,\n  \"weight\": number,\n  \"steps\": number,\n  \"sleep\": { \"hours\": number, \"score\": number, \"bed_time\": \"HH:MM\", \"wake_time\": \"HH:MM\" },\n  \"workouts\": [{ \"type\": \"Cardio|Weight training|Calisthenics|Mobility|Other\", \"minutes\": number, \"notes\": \"\" }],\n  \"screen_time\": { \"total\": number, \"useful\": number, \"entertainment\": number, \"apps\": [{ \"name\": \"WhatsApp\", \"minutes\": number }] },\n  \"bible\": [{ \"book\": \"John\", \"chapters\": [3], \"minutes\": number }],\n  \"audio_bible\": [{ \"book\": \"Romans\", \"chapters\": [8], \"minutes\": number }],\n  \"reading\": [{ \"title\": \"Book Title\", \"pages\": number, \"chapters\": \"\", \"category\": \"Self improvement|Faith|Fiction|Other\", \"status\": \"current|finished|gave-up\" }],\n  \"audio_reading\": [{ \"title\": \"Audiobook Title\", \"minutes\": number, \"chapters\": \"\", \"category\": \"Audiobook|Self improvement|Faith|Fiction|Other\", \"status\": \"current|finished|gave-up\" }],\n  \"mood\": number,\n  \"energy\": number,\n  \"focus\": number,\n  \"stress\": number,\n  \"notes\": \"\"\n}\n\nRules:\n- Missing values should be omitted, not set to zero.\n- Only use zero when I explicitly logged zero.\n- Keep regular reading separate from audiobook listening.\n- Keep Bible reading separate from Audio Bible listening.\n- Any physical or digital book I read with my eyes goes in \"reading\".\n- Any audiobook goes in \"audio_reading\".\n- Any Bible I read goes in \"bible\".\n- Any Bible I listen to goes in \"audio_bible\".\n- For nutrition, read labels first when labels are available.\n- If calories are estimated or uncertain, slightly overestimate calories.\n- If protein or fiber are estimated or uncertain, slightly underestimate protein and fiber.\n- Do not invent exact precision when uncertain; use reasonable rounded numbers.\n- Any book or audiobook mention should be status \"current\" unless I clearly say I finished it or gave up on it.\n- For screen time, count WhatsApp as useful screen time. Count all other screen time as entertainment unless I explicitly say it was work/useful.\n- If I paste this app's import error back to you, correct yourself by returning raw valid JSON only.`;
+  return `You are my structured life tracking assistant. Track my food, sleep, workouts, screen time, Bible reading, Audio Bible listening, book reading, audiobook listening, mood, energy, focus, weight, steps, water, caffeine, supplements, and notes throughout the day.\n\nWhen I say \"close the day\", \"export\", \"give me the JSON\", or anything similar, return ONE valid raw JSON object only. Do not use Markdown. Do not use a code block. Do not write explanations before or after it. Do not include comments or trailing commas. The first character of your reply must be { and the last character must be }.\n\nUse this exact shape when values are known:\n{\n  \"date\": \"YYYY-MM-DD\",\n  \"calories\": number,\n  \"protein\": number,\n  \"carbs\": number,\n  \"fat\": number,\n  \"fiber\": number,\n  \"water\": number,\n  \"caffeine\": number,\n  \"creatine\": number,\n  \"weight\": number,\n  \"steps\": number,\n  \"sleep\": { \"hours\": number, \"score\": number, \"bed_time\": \"HH:MM\", \"wake_time\": \"HH:MM\" },\n  \"workouts\": [{ \"type\": \"Cardio|Weight training|Calisthenics|Mobility|Other\", \"minutes\": number, \"notes\": \"\" }],\n  \"screen_time\": { \"total\": number, \"useful\": number, \"entertainment\": number, \"apps\": [{ \"name\": \"WhatsApp\", \"minutes\": number }] },\n  \"bible\": [{ \"book\": \"John\", \"chapters\": [3], \"minutes\": number }],\n  \"audio_bible\": [{ \"book\": \"Romans\", \"chapters\": [8], \"minutes\": number }],\n  \"reading\": [{ \"title\": \"Book Title\", \"author\": \"Author Name\", \"library\": \"General Library\", \"pages\": number, \"chapters\": \"\", \"category\": \"Self improvement|Faith|Fiction|Other\", \"status\": \"current|finished|gave-up\" }],\n  \"audio_reading\": [{ \"title\": \"Audiobook Title\", \"author\": \"Author Name\", \"library\": \"Audible|YouTube|General Library\", \"source\": \"Audible|YouTube|General Library\", \"minutes\": number, \"chapters\": \"\", \"category\": \"Audiobook|Self improvement|Faith|Fiction|Other\", \"status\": \"current|finished|gave-up\" }],\n  \"mood\": number,\n  \"energy\": number,\n  \"focus\": number,\n  \"stress\": number,\n  \"notes\": \"\"\n}\n\nRules:\n- Missing values should be omitted, not set to zero.\n- Only use zero when I explicitly logged zero.\n- Keep regular reading separate from audiobook listening.\n- Keep Bible reading separate from Audio Bible listening.\n- Any physical or digital book I read with my eyes goes in \"reading\".\n- Any audiobook goes in \"audio_reading\".\n- For every regular book, include \"author\" when known and \"library\" for who owns it or where it belongs.\n- For every audiobook, include \"author\" when known and use \"library\" plus \"source\" for where I listened to it, such as Audible or YouTube.\n- If no book library, audiobook source, or owner is known, use \"General Library\".\n- Use the same exact title spelling for the same book across days so the app can consolidate it.\n- Any Bible I read goes in \"bible\".\n- Any Bible I listen to goes in \"audio_bible\".\n- For nutrition, read labels first when labels are available.\n- If calories are estimated or uncertain, slightly overestimate calories.\n- If protein or fiber are estimated or uncertain, slightly underestimate protein and fiber.\n- Do not invent exact precision when uncertain; use reasonable rounded numbers.\n- Any book or audiobook mention should be status \"current\" unless I clearly say I finished it or gave up on it.\n- For screen time, count WhatsApp as useful screen time. Count all other screen time as entertainment unless I explicitly say it was work/useful.\n- If I paste this app's import error back to you, correct yourself by returning raw valid JSON only.`;
 }
 async function copyText(text, label = "Copied") {
   try { await navigator.clipboard.writeText(text); toast(label); } catch { toast("Copy failed"); }
@@ -921,6 +1116,19 @@ function toast(message) {
   el.classList.add("show");
   clearTimeout(toast.timer);
   toast.timer = setTimeout(() => el.classList.remove("show"), 1800);
+}
+function pauseTransientWork() {
+  clearTimeout(toast.timer);
+  document.getElementById("toast")?.classList.remove("show");
+  document.querySelectorAll(".ledger-row.is-confirming").forEach((row) => row.classList.remove("is-confirming"));
+}
+function cleanupBrowserCache() {
+  if ("serviceWorker" in navigator && location.protocol !== "file:" && navigator.serviceWorker.getRegistrations) {
+    navigator.serviceWorker.getRegistrations().then((registrations) => registrations.forEach((registration) => registration.unregister())).catch(() => {});
+  }
+  if ("caches" in window) {
+    caches.keys().then((keys) => keys.forEach((key) => caches.delete(key))).catch(() => {});
+  }
 }
 
 document.addEventListener("click", (event) => {
@@ -998,6 +1206,16 @@ document.addEventListener("touchend", (event) => {
 }, { passive: true });
 document.addEventListener("change", (event) => {
   if (event.target.matches("#viewDate, [data-date-input]")) { selectedDate = event.target.value || selectedDate; renderAll(); }
+  if (event.target.matches("#book_key")) {
+    const book = bookStatuses[event.target.value];
+    if (!book) return;
+    const form = event.target.form;
+    form.edit_title.value = book.title || "";
+    form.edit_author.value = book.author || "";
+    form.edit_library.value = readingLibraryName(book.library);
+    form.edit_medium.value = book.medium === "listen" ? "listen" : "read";
+    form.edit_status.value = normalizeStatus(book.status);
+  }
 });
 document.addEventListener("submit", (event) => {
   event.preventDefault();
@@ -1010,9 +1228,15 @@ document.addEventListener("submit", (event) => {
     const patch = {};
     if (values.bible_book) patch.bible = [{ book:values.bible_book, chapters:parseChapters(values.bible_chapters) }];
     if (values.audio_bible_book) patch.audio_bible = [{ book:values.audio_bible_book, chapters:parseChapters(values.audio_bible_chapters), minutes:num(values.audio_bible_minutes) }];
-    if (values.book_title) patch.reading = [{ title:values.book_title, pages:num(values.book_pages), chapters:values.book_chapters, status:normalizeStatus(values.book_status), category:"Other", medium:"read" }];
-    if (values.audio_book_title) patch.audio_reading = [{ title:values.audio_book_title, minutes:num(values.audio_book_minutes), chapters:values.audio_book_chapters, status:normalizeStatus(values.audio_book_status), category:"Audiobook", medium:"listen" }];
+    if (values.book_title) patch.reading = [{ title:values.book_title, author:values.book_author, library:readingLibraryName(values.book_library), pages:num(values.book_pages), chapters:values.book_chapters, status:normalizeStatus(values.book_status), category:"Other", medium:"read" }];
+    if (values.audio_book_title) patch.audio_reading = [{ title:values.audio_book_title, author:values.audio_book_author, library:readingLibraryName(values.audio_book_source), source:values.audio_book_source, minutes:num(values.audio_book_minutes), chapters:values.audio_book_chapters, status:normalizeStatus(values.audio_book_status), category:"Audiobook", medium:"listen" }];
     updateEntry(selectedDate, patch); toast("Reading saved");
+  }
+  if (form.id === "bookEditForm") {
+    try { editBookRecord(values); syncBookStatusesFromEntries(); renderAll(); toast("Book updated"); } catch (error) { toast(error.message || "Book update failed"); }
+  }
+  if (form.id === "manualBookForm") {
+    try { saveManualBook(values); syncBookStatusesFromEntries(); renderAll(); toast("Book added"); } catch (error) { toast(error.message || "Book add failed"); }
   }
   if (form.id === "skillForm") { skills.push({ date:selectedDate, skill:values.skill, value:values.value, unit:values.unit, progression:values.progression }); saveSkills(); renderAll(); toast("PR saved"); }
   if (form.id === "goalsForm") {
@@ -1025,9 +1249,13 @@ document.getElementById("themeToggle").addEventListener("click", () => {
   saveSettings(); renderAll(); toast(`Theme ${settings.theme}`);
 });
 
-if ("serviceWorker" in navigator && location.protocol !== "file:" && navigator.serviceWorker.getRegistrations) {
-  navigator.serviceWorker.getRegistrations().then((registrations) => registrations.forEach((registration) => registration.unregister())).catch(() => {});
-}
+cleanupBrowserCache();
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) pauseTransientWork();
+  else cleanupBrowserCache();
+});
+window.addEventListener("pagehide", pauseTransientWork);
+window.addEventListener("freeze", pauseTransientWork);
 
 syncBookStatusesFromEntries();
 renderAll();
