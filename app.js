@@ -43,6 +43,7 @@ let skills = Array.isArray(loadJSON(STORAGE.skills, [])) ? loadJSON(STORAGE.skil
 let bookStatuses = loadJSON(STORAGE.books, {});
 let selectedDate = localDateKey(new Date());
 let activePage = "dashboard";
+let editFocus = "";
 
 function loadJSON(key, fallback) {
   try { return JSON.parse(localStorage.getItem(key)) ?? fallback; } catch { return fallback; }
@@ -270,10 +271,14 @@ function bookKey(title, medium = "read") {
 function mergeBookRecord(existing = {}, update = {}) {
   const aliases = [...new Set([...(existing.aliases || []), ...(update.aliases || []), existing.title, update.title].map(cleanKey).filter(Boolean))];
   const status = normalizeStatus(update.status || existing.status || "current");
+  const manualLibrary = Boolean(update.manualLibrary || existing.manualLibrary);
+  const manualAuthor = Boolean(update.manualAuthor || existing.manualAuthor);
+  const library = manualLibrary && !update.manualLibrary ? existing.library : update.library || existing.library;
+  const author = manualAuthor && !update.manualAuthor ? existing.author : update.author || existing.author;
   const next = {
     title: update.title || existing.title || "",
-    author: update.author || existing.author || "",
-    library: readingLibraryName(update.library || existing.library),
+    author: author || "",
+    library: readingLibraryName(library),
     medium: update.medium === "listen" || existing.medium === "listen" ? "listen" : "read",
     firstSeen: [existing.firstSeen, update.firstSeen].filter(Boolean).sort()[0] || "",
     lastSeen: [existing.lastSeen, update.lastSeen].filter(Boolean).sort().slice(-1)[0] || "",
@@ -281,7 +286,9 @@ function mergeBookRecord(existing = {}, update = {}) {
     category: update.category || existing.category || (update.medium === "listen" ? "Audiobook" : "Other"),
     statusDate: update.statusDate || existing.statusDate || "",
     notes: update.notes || existing.notes || "",
-    aliases
+    aliases,
+    manualLibrary,
+    manualAuthor
   };
   if (status !== "current" && update.statusDate) {
     next.status = status;
@@ -309,6 +316,8 @@ function canonicalizeBookStatuses(source = {}) {
       title,
       medium,
       library: readingLibraryName(book?.library || book?.source),
+      manualLibrary: Boolean(book?.manualLibrary),
+      manualAuthor: Boolean(book?.manualAuthor),
       status: normalizeStatus(book?.status),
       firstSeen: book?.firstSeen || "",
       lastSeen: book?.lastSeen || "",
@@ -361,9 +370,10 @@ function ring(value, goal, tone = "blue", lowerLimit = false) {
   const over = lowerLimit && v !== null && g && v > g;
   return `<span class="ring ${over ? "coral" : tone}" style="--p:${width}%"></span>`;
 }
-function metricCard({ title, value, unit, goal, tone = "blue", lowerLimit = false, detail = "" }) {
+function metricCard({ title, value, unit, goal, tone = "blue", lowerLimit = false, detail = "", editSection = "" }) {
   const digits = value && Math.abs(value) < 10 ? 1 : 0;
-  return `<article class="metric-card">
+  const section = editSection || cleanKey(title);
+  return `<article class="metric-card" data-edit-section="${escapeHTML(section)}">
     <div class="metric-head"><span class="metric-title">${escapeHTML(title)}</span>${ring(value, goal, tone, lowerLimit)}</div>
     <div><p class="metric-value">${fmt(value, digits)}</p><span class="metric-unit">${escapeHTML(unit)}</span></div>
     ${bar(value, goal, tone, lowerLimit)}
@@ -409,7 +419,7 @@ function confirmDeleteEntry(date) {
 }
 function ledgerRow(date) {
   const d = dayData(date);
-  return `<article class="list-row ledger-row" data-ledger-row="${date}">
+  return `<article class="list-row ledger-row" data-ledger-row="${date}" data-edit-section="day">
     <button class="text-button ledger-open" type="button" data-open-date="${date}">
       <div><div class="list-title">${formatDate(date)}</div><div class="list-subtitle">${fmt(d.calories)} kcal, ${fmt(d.steps)} steps, ${fmt(d.sleepHours,1)} h sleep, ${d.bible.length + d.audioBible.length + d.reading.length + d.audioReading.length} reading/listening sessions</div></div>
     </button>
@@ -436,7 +446,7 @@ function categoryCard(title, page, stat, sub, icon) {
 
 function renderAll() {
   applyTheme();
-  renderDashboard(); renderNutrition(); renderMovement(); renderSleep(); renderTime(); renderReading(); renderMore(); renderGoals(); renderImport(); renderAI(); renderLedger(); renderShare(); renderData();
+  renderDashboard(); renderNutrition(); renderMovement(); renderSleep(); renderTime(); renderReading(); renderMore(); renderGoals(); renderImport(); renderAI(); renderLedger(); renderShare(); renderData(); renderEdit();
   setActivePage(activePage, false);
 }
 function applyTheme() {
@@ -680,6 +690,22 @@ function renderData() {
       </div>
     </section>`;
 }
+function renderEdit() {
+  const d = dayData(selectedDate);
+  const sectionLabel = editFocus ? `Editing ${editFocus}` : "Correct saved data";
+  document.getElementById("editView").innerHTML = `
+    ${pageHero("editTitle","Edit Day",sectionLabel)}
+    <section class="panel"><form id="dayEditForm" class="form-grid">
+      ${input("weight","Weight kg",d.weight,"number","0.1")}${input("calories","Calories",d.calories,"number")}${input("protein","Protein g",d.protein,"number")}${input("carbs","Carbs g",d.carbs,"number")}${input("fat","Fat g",d.fat,"number")}${input("fiber","Fiber g",d.fiber,"number")}${input("water","Water L",d.water,"number","0.1")}${input("caffeine","Caffeine mg",d.caffeine,"number")}${input("creatine","Creatine g",d.creatine,"number","0.1")}
+      ${input("steps","Steps",d.steps,"number")}${input("workout_minutes","Workout minutes",d.workoutMinutes,"number")}${select("workout_type","Workout type",d.workoutType,["","Cardio","Weight training","Calisthenics","Mobility","Other"])}
+      ${input("sleep_hours","Sleep hours",d.sleepHours,"number","0.1")}${input("sleep_score","Sleep score",d.sleepScore,"number")}${input("bed_time","Bedtime",d.bedTime,"time")}${input("wake_time","Wake time",d.wakeTime,"time")}
+      ${input("screen_total","Total screen minutes",d.screenTotal,"number")}${input("screen_useful","Useful screen minutes",d.screenUseful,"number")}${input("screen_entertainment","Entertainment screen minutes",d.screenEntertainment,"number")}
+      ${input("mood","Mood /10",d.mood,"number")}${input("energy","Energy /10",d.energy,"number")}${input("focus","Focus /10",d.focus,"number")}${input("stress","Stress /10",d.stress,"number")}
+      <div class="form-row form-wide"><label for="notes">Notes</label><textarea id="notes" name="notes">${escapeHTML(d.notes || "")}</textarea></div>
+      <div class="form-actions"><button class="primary-button" type="submit">Save Corrections</button><button class="soft-button" type="button" data-page="dashboard">Back</button></div>
+    </form></section>
+    <section class="panel"><div class="panel-head"><h3>Reading Corrections</h3><span class="status-chip">Reading page</span></div><p class="panel-note">Books, audiobooks, libraries, authors, and duplicate consolidation live in the Reading section so those edits stay organized.</p><div class="form-actions"><button class="soft-button" type="button" data-page="reading">Open Reading Tools</button></div></section>`;
+}
 
 function latestWeightChange() {
   const weights = loggedDates().map((date) => ({ date, value: dayData(date).weight })).filter((item) => item.value !== null);
@@ -869,7 +895,7 @@ function readingSnapshotHTML(bible, books) {
   </div>`;
 }
 function snapshotRow(title, subtitle, chip) {
-  return `<article class="list-row"><div><div class="list-title">${escapeHTML(title)}</div><div class="list-subtitle">${escapeHTML(subtitle)}</div></div><span class="status-chip">${escapeHTML(chip)}</span></article>`;
+  return `<article class="list-row" data-edit-section="notes"><div><div class="list-title">${escapeHTML(title)}</div><div class="list-subtitle">${escapeHTML(subtitle)}</div></div><span class="status-chip">${escapeHTML(chip)}</span></article>`;
 }
 function bookProgress(title, medium = "read") {
   const key = cleanKey(title), isAudio = medium === "listen";
@@ -902,7 +928,7 @@ function bookListHTML(books, controls, mode = "history") {
     const subtitle = mode === "finished" || mode === "finished-audio"
       ? `${escapeHTML(metaText || book.category || "Other")} - ${finishedText}${medium === "listen" && progress.minutes ? ` - ${fmt(progress.minutes)} min tracked` : ""}${medium !== "listen" && progress.pages ? ` - ${fmt(progress.pages)} pages tracked` : ""}`
       : `${escapeHTML(metaText || book.category || "Other")} - ${progressText || `first ${escapeHTML(book.firstSeen || "-")} - last ${escapeHTML(book.lastSeen || "-")}`}`;
-    return `<article class="list-row"><div><div class="list-title">${escapeHTML(book.title)}</div><div class="list-subtitle">${subtitle}</div></div><div><span class="status-chip">${medium === "listen" ? "audio" : "read"}</span><span class="status-chip ${normalizeStatus(book.status)}">${escapeHTML(normalizeStatus(book.status))}</span>${controls ? `<div class="form-actions"><button class="text-button" type="button" data-book-status="${escapeHTML(key)}" data-status="finished">Finished</button><button class="text-button" type="button" data-book-status="${escapeHTML(key)}" data-status="gave-up">Gave up</button></div>` : ""}</div></article>`;
+    return `<article class="list-row" data-edit-section="reading"><div><div class="list-title">${escapeHTML(book.title)}</div><div class="list-subtitle">${subtitle}</div></div><div><span class="status-chip">${medium === "listen" ? "audio" : "read"}</span><span class="status-chip ${normalizeStatus(book.status)}">${escapeHTML(normalizeStatus(book.status))}</span>${controls ? `<div class="form-actions"><button class="text-button" type="button" data-book-status="${escapeHTML(key)}" data-status="finished">Finished</button><button class="text-button" type="button" data-book-status="${escapeHTML(key)}" data-status="gave-up">Gave up</button></div>` : ""}</div></article>`;
   }).join("");
 }
 function readingLogTableHTML() {
@@ -1034,6 +1060,8 @@ function saveManualBook(values, prefix = "manual") {
     title,
     author: values[`${prefix}_author`] || values.edit_author || "",
     library,
+    manualLibrary: true,
+    manualAuthor: Boolean(values[`${prefix}_author`] || values.edit_author),
     medium,
     firstSeen: selectedDate,
     lastSeen: selectedDate,
@@ -1057,6 +1085,8 @@ function editBookRecord(values) {
     title,
     author: values.edit_author || existing.author || "",
     library: readingLibraryName(values.edit_library || existing.library),
+    manualAuthor: true,
+    manualLibrary: true,
     medium,
     status: normalizeStatus(values.edit_status || existing.status),
     statusDate: normalizeStatus(values.edit_status || existing.status) !== "current" ? (existing.statusDate || selectedDate) : existing.statusDate,
@@ -1065,6 +1095,37 @@ function editBookRecord(values) {
   if (oldKey !== newKey) delete bookStatuses[oldKey];
   bookStatuses[newKey] = mergeBookRecord(bookStatuses[newKey], update);
   saveBooks();
+}
+function setNumericField(target, key, value) {
+  if (value === undefined || value === "") delete target[key];
+  else target[key] = num(value);
+}
+function applyDayCorrections(values) {
+  const next = { ...getEntry(selectedDate) };
+  ["weight","calories","protein","carbs","fat","fiber","water","caffeine","creatine","steps","workout_minutes","sleep_hours","sleep_score","mood","energy","focus","stress"].forEach((key) => setNumericField(next, key, values[key]));
+  ["bed_time","wake_time","workout_type","notes"].forEach((key) => {
+    if (values[key]) next[key] = values[key];
+    else delete next[key];
+  });
+  next.time = {
+    ...(next.time && typeof next.time === "object" ? next.time : {}),
+    total: values.screen_total === "" ? undefined : num(values.screen_total),
+    useful: values.screen_useful === "" ? undefined : num(values.screen_useful),
+    entertainment: values.screen_entertainment === "" ? undefined : num(values.screen_entertainment)
+  };
+  Object.keys(next.time).forEach((key) => next.time[key] === undefined && delete next.time[key]);
+  if (!Object.keys(next.time).length) delete next.time;
+  next.workouts = values.workout_minutes || values.workout_type ? [{ type:values.workout_type || "Workout", minutes:num(values.workout_minutes) }] : [];
+  entries[selectedDate] = next;
+  saveEntries();
+  syncBookStatusesFromEntries();
+  renderAll();
+}
+function openEditPage(section = "day", date = selectedDate) {
+  selectedDate = date || selectedDate;
+  editFocus = String(section || "day").replace(/-/g, " ");
+  activePage = "edit";
+  renderAll();
 }
 
 function weekStartOf(dateKey) {
@@ -1187,10 +1248,17 @@ document.addEventListener("click", (event) => {
   }
 });
 let ledgerTouch = null;
+let editTouch = null;
 document.addEventListener("touchstart", (event) => {
   const row = event.target.closest(".ledger-row");
   if (!row || !event.touches.length) return;
   ledgerTouch = { row, x:event.touches[0].clientX, y:event.touches[0].clientY };
+}, { passive: true });
+document.addEventListener("touchstart", (event) => {
+  if (event.target.closest("button, input, textarea, select, label, summary")) return;
+  const target = event.target.closest("[data-edit-section]");
+  if (!target || !event.touches.length) return;
+  editTouch = { target, x:event.touches[0].clientX, y:event.touches[0].clientY };
 }, { passive: true });
 document.addEventListener("touchend", (event) => {
   if (!ledgerTouch || !event.changedTouches.length) return;
@@ -1203,6 +1271,16 @@ document.addEventListener("touchend", (event) => {
     ledgerTouch.row.classList.add("is-confirming");
   }
   ledgerTouch = null;
+}, { passive: true });
+document.addEventListener("touchend", (event) => {
+  if (!editTouch || !event.changedTouches.length) return;
+  const dx = event.changedTouches[0].clientX - editTouch.x;
+  const dy = event.changedTouches[0].clientY - editTouch.y;
+  if (dx > 52 && Math.abs(dy) < 70) {
+    const date = editTouch.target.dataset.ledgerRow || selectedDate;
+    openEditPage(editTouch.target.dataset.editSection, date);
+  }
+  editTouch = null;
 }, { passive: true });
 document.addEventListener("change", (event) => {
   if (event.target.matches("#viewDate, [data-date-input]")) { selectedDate = event.target.value || selectedDate; renderAll(); }
@@ -1237,6 +1315,10 @@ document.addEventListener("submit", (event) => {
   }
   if (form.id === "manualBookForm") {
     try { saveManualBook(values); syncBookStatusesFromEntries(); renderAll(); toast("Book added"); } catch (error) { toast(error.message || "Book add failed"); }
+  }
+  if (form.id === "dayEditForm") {
+    applyDayCorrections(values);
+    toast("Corrections saved");
   }
   if (form.id === "skillForm") { skills.push({ date:selectedDate, skill:values.skill, value:values.value, unit:values.unit, progression:values.progression }); saveSkills(); renderAll(); toast("PR saved"); }
   if (form.id === "goalsForm") {

@@ -449,6 +449,7 @@ tr:last-child td { border-bottom: 0; }
   color: var(--text);
 }
 .library-folder .list { padding: 0 12px 12px; }
+.form-wide { grid-column: 1 / -1; }
 
 .bottom-tabs {
   position: fixed;
