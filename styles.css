@@ -450,6 +450,7 @@ tr:last-child td { border-bottom: 0; }
 }
 .library-folder .list { padding: 0 12px 12px; }
 .form-wide { grid-column: 1 / -1; }
+.mini-section + .mini-section { margin-top: 18px; }
 
 .bottom-tabs {
   position: fixed;

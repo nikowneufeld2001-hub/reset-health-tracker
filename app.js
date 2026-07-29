@@ -30,6 +30,8 @@ const defaults = {
   screenUsefulGoal: 180,
   screenEntertainmentLimit: 90,
   waterGoal: 3,
+  fiberGoal: 30,
+  caffeineLimit: 400,
   weightGoal: "",
   readingDaysGoal: 5,
   bibleChaptersGoal: 7,
@@ -196,7 +198,8 @@ function dayData(date = selectedDate) {
     audioBible,
     reading,
     audioReading,
-    notes: e.notes || e.summary || ""
+    notes: e.notes || e.summary || "",
+    tags: listify(e.tags || e.day_tags || e.tag).map((tag) => String(tag).trim()).filter(Boolean)
   };
 }
 
@@ -389,6 +392,15 @@ function metricActionCard({ title, value, unit, goal, tone = "blue", detail = ""
     ${detail ? `<span class="small-text">${escapeHTML(detail)}</span>` : ""}
   </button>`;
 }
+function metricPageCard({ title, value, unit, goal, tone = "blue", lowerLimit = false, detail = "", page }) {
+  const digits = value && Math.abs(value) < 10 ? 1 : 0;
+  return `<button class="metric-card metric-action" type="button" data-page="${escapeHTML(page)}">
+    <div class="metric-head"><span class="metric-title">${escapeHTML(title)}</span>${ring(value, goal, tone, lowerLimit)}</div>
+    <div><p class="metric-value">${fmt(value, digits)}</p><span class="metric-unit">${escapeHTML(unit)}</span></div>
+    ${bar(value, goal, tone, lowerLimit)}
+    ${detail ? `<span class="small-text">${escapeHTML(detail)}</span>` : ""}
+  </button>`;
+}
 function pageHero(id, title, subtitle) {
   return `<section class="hero-card">
     <div class="hero-content"><p class="eyebrow">${escapeHTML(title)}</p><h2 id="${id}">${escapeHTML(title)}</h2><p class="subtitle">${escapeHTML(subtitle)}</p></div>
@@ -446,7 +458,7 @@ function categoryCard(title, page, stat, sub, icon) {
 
 function renderAll() {
   applyTheme();
-  renderDashboard(); renderNutrition(); renderMovement(); renderSleep(); renderTime(); renderReading(); renderMore(); renderGoals(); renderImport(); renderAI(); renderLedger(); renderShare(); renderData(); renderEdit();
+  renderDashboard(); renderNutrition(); renderMovement(); renderSleep(); renderTime(); renderReading(); renderBible(); renderInsights(); renderMore(); renderGoals(); renderImport(); renderAI(); renderLedger(); renderShare(); renderData(); renderEdit();
   setActivePage(activePage, false);
 }
 function applyTheme() {
@@ -499,10 +511,11 @@ function renderDashboard() {
       ${categoryCard("Sleep","sleep",`${fmt(d.sleepHours,1)} h`,d.bedTime || d.wakeTime ? `${d.bedTime || "-"} to ${d.wakeTime || "-"}` : "Bed and wake not logged","icon-sleep")}
       ${categoryCard("Time","time",`${fmt(d.screenTotal)} screen min`,`${fmt(d.screenUseful)} useful / ${fmt(d.screenEntertainment)} entertainment`,"icon-time")}
       ${categoryCard("Reading","reading",`${bible.monthReadBooks.length} read Bible books`,`${books.readFinishedThisMonth.length} books / ${books.listenFinishedThisMonth.length} audio done`,"icon-read")}
+      ${categoryCard("Insights","insights","Pattern finder","Maintenance, trends, confidence, and cross-life patterns.","icon-ai")}
       ${categoryCard("Goals","goals","Adjust targets","Goals shape the dashboard status","icon-goals")}
     </div>
     <details class="detail-card"><summary>Reading Snapshot</summary><div class="detail-body">${readingSnapshotHTML(bible, books)}</div></details>
-    <h2 class="section-title">Useful Summaries</h2><div class="insight-grid">${insightCards().join("")}</div>
+    <h2 class="section-title">Useful Summaries</h2><div class="insight-grid">${insightCards().join("")}</div><div class="form-actions"><button class="soft-button" type="button" data-page="insights">Open Full Insights</button></div>
   `;
 }
 
@@ -517,7 +530,7 @@ function renderNutrition() {
       ${metricCard({ title:"Weight", value:d.weight, unit:"kg", goal:settings.weightGoal || d.weight, tone:"violet" })}
     </div>
     <section class="panel"><div class="panel-head"><h3>7 Day Nutrition</h3><span class="status-chip">${week.filter((x) => x.calories !== null).length}/7 days</span></div>${week.map((x) => chartRow(formatDate(x.date,"weekday"), x.calories, settings.calorieGoal, "kcal", true)).join("")}</section>
-    <details class="detail-card" open><summary>Log Nutrition</summary><div class="detail-body"><form id="nutritionForm" class="form-grid">
+    <details class="detail-card"><summary>Log Nutrition</summary><div class="detail-body"><form id="nutritionForm" class="form-grid">
       ${input("calories","Calories",d.calories,"number")}${input("protein","Protein g",d.protein,"number")}${input("carbs","Carbs g",d.carbs,"number")}${input("fat","Fat g",d.fat,"number")}${input("fiber","Fiber g",d.fiber,"number")}${input("water","Water L",d.water,"number","0.1")}${input("creatine","Creatine g",d.creatine,"number","0.1")}${input("caffeine","Caffeine mg",d.caffeine,"number")}${input("weight","Weight kg",d.weight,"number","0.1")}
       <div class="form-actions"><button class="primary-button" type="submit">Save Nutrition</button></div>
     </form></div></details>`;
@@ -534,7 +547,7 @@ function renderMovement() {
       ${metricCard({ title:"Skill PRs", value:skills.length, unit:"records", goal:Math.max(1, skills.length), tone:"violet" })}
     </div>
     <section class="panel"><div class="panel-head"><h3>7 Day Steps</h3><span class="status-chip">${fmt(average(week.map((x) => x.steps)))} avg</span></div>${week.map((x) => chartRow(formatDate(x.date,"weekday"), x.steps, settings.stepsGoal, "steps")).join("")}</section>
-    <details class="detail-card" open><summary>Log Movement</summary><div class="detail-body"><form id="movementForm" class="form-grid">
+    <details class="detail-card"><summary>Log Movement</summary><div class="detail-body"><form id="movementForm" class="form-grid">
       ${input("steps","Steps",d.steps,"number")}${input("workout_minutes","Workout minutes",d.workoutMinutes,"number")}${select("workout_type","Workout type",d.workoutType,["","Cardio","Weight training","Calisthenics","Mobility","Other"])}
       <div class="form-actions"><button class="primary-button" type="submit">Save Movement</button></div>
     </form></div></details>
@@ -555,7 +568,7 @@ function renderSleep() {
       ${metricCard({ title:"Stress", value:d.stress, unit:"/10", goal:4, tone:"amber", lowerLimit:true })}
     </div>
     <section class="panel"><div class="panel-head"><h3>7 Day Sleep</h3><span class="status-chip">${fmt(average(week.map((x) => x.sleepHours)),1)} h avg</span></div>${week.map((x) => chartRow(formatDate(x.date,"weekday"), x.sleepHours, settings.sleepGoal, "h")).join("")}</section>
-    <details class="detail-card" open><summary>Log Sleep</summary><div class="detail-body"><form id="sleepForm" class="form-grid">
+    <details class="detail-card"><summary>Log Sleep</summary><div class="detail-body"><form id="sleepForm" class="form-grid">
       ${input("sleep_hours","Sleep hours",d.sleepHours,"number","0.1")}${input("sleep_score","Sleep score",d.sleepScore,"number")}${input("bed_time","Bedtime",d.bedTime,"time")}${input("wake_time","Wake time",d.wakeTime,"time")}${input("energy","Energy /10",d.energy,"number")}${input("mood","Mood /10",d.mood,"number")}
       <div class="form-actions"><button class="primary-button" type="submit">Save Sleep</button></div>
     </form></div></details>`;
@@ -572,7 +585,7 @@ function renderTime() {
       ${metricCard({ title:"Focus", value:d.focus, unit:"/10", goal:10, tone:"violet" })}
     </div>
     <section class="panel"><div class="panel-head"><h3>7 Day Entertainment</h3><span class="status-chip">${fmt(average(week.map((x) => x.screenEntertainment)))} min avg</span></div>${week.map((x) => chartRow(formatDate(x.date,"weekday"), x.screenEntertainment, settings.screenEntertainmentLimit, "min", true)).join("")}</section>
-    <details class="detail-card" open><summary>Log Time</summary><div class="detail-body"><form id="timeForm" class="form-grid">
+    <details class="detail-card"><summary>Log Time</summary><div class="detail-body"><form id="timeForm" class="form-grid">
       ${input("screen_total","Total screen minutes",d.screenTotal,"number")}${input("screen_useful","Useful minutes",d.screenUseful,"number")}${input("screen_entertainment","Entertainment minutes",d.screenEntertainment,"number")}${input("focus","Focus /10",d.focus,"number")}${input("mood","Mood /10",d.mood,"number")}${input("energy","Energy /10",d.energy,"number")}
       <div class="form-actions"><button class="primary-button" type="submit">Save Time</button></div>
     </form></div></details>`;
@@ -584,13 +597,13 @@ function renderReading() {
   document.getElementById("readingView").innerHTML = `
     ${pageHero("readingTitle","Reading","Books, Bible, audiobooks, Audio Bible, and full history.")}
     <div class="metric-grid">
-      ${metricCard({ title:"Bible Read", value:bible.yearReadChapters, unit:"chapters", goal:TOTAL_BIBLE_CHAPTERS, tone:"violet", detail:`${bible.yearReadPercent}% of Bible` })}
+      ${metricPageCard({ title:"Bible Read", value:bible.yearReadChapters, unit:"chapters", goal:TOTAL_BIBLE_CHAPTERS, tone:"violet", detail:`${bible.yearReadPercent}% of Bible`, page:"bible" })}
       ${metricCard({ title:"Audio Bible", value:bible.yearAudioChapters, unit:"chapters", goal:TOTAL_BIBLE_CHAPTERS, tone:"blue", detail:`${bible.yearAudioPercent}% listened` })}
       ${metricActionCard({ title:"Reading", value:books.readCurrent.length, unit:"current", goal:Math.max(1, books.readCurrent.length), tone:"cyan", detail:`${books.readFinishedThisMonth.length} finished this month`, panel:"current" })}
       ${metricActionCard({ title:"Audiobooks", value:books.listenCurrent.length, unit:"current", goal:Math.max(1, books.listenCurrent.length), tone:"mint", detail:`${books.listenFinishedThisMonth.length} finished this month`, panel:"audio" })}
     </div>
-    <details class="detail-card" open><summary>Bible Summary</summary><div class="detail-body">${readingSnapshotHTML(bible, books)}</div></details>
-    <details class="detail-card" open><summary>Log Reading</summary><div class="detail-body"><form id="readingForm" class="form-grid">
+    <section class="panel"><div class="panel-head"><h3>Bible Summary</h3><button class="status-chip" type="button" data-page="bible">Open Bible Progress</button></div><div class="book-grid">${snapshotRow("Bible read this year", `${bible.yearReadPercent}% read with ${bible.completedReadBooks.length} completed books.`, `${bible.yearReadChapters} ch`)}${snapshotRow("Audio Bible this year", `${bible.yearAudioPercent}% listened with ${bible.completedAudioBooks.length} completed books.`, `${bible.yearAudioChapters} ch`)}</div></section>
+    <details class="detail-card"><summary>Log Reading</summary><div class="detail-body"><form id="readingForm" class="form-grid">
       ${select("bible_book","Bible book read","",["",...BIBLE_BOOKS.map((x) => x[0])])}${input("bible_chapters","Bible chapters read","","text")}${select("audio_bible_book","Audio Bible book","",["",...BIBLE_BOOKS.map((x) => x[0])])}${input("audio_bible_chapters","Audio Bible chapters","","text")}${input("audio_bible_minutes","Audio Bible minutes","","number")}
       ${input("book_title","Book read","","text")}${input("book_author","Book author","","text")}${input("book_library","Book library or owner","","text")}${input("book_pages","Pages read","","number")}${input("book_chapters","Book chapters read","","text")}${select("book_status","Book status","current",["current","finished","gave-up"])}
       ${input("audio_book_title","Audiobook listened","","text")}${input("audio_book_author","Audiobook author","","text")}${input("audio_book_source","Audiobook source","","text")}${input("audio_book_minutes","Audiobook minutes","","number")}${input("audio_book_chapters","Audiobook chapters","","text")}${select("audio_book_status","Audiobook status","current",["current","finished","gave-up"])}
@@ -616,6 +629,48 @@ function renderReading() {
     <section class="panel"><div class="panel-head"><h3>Reading & Listening Log</h3><span class="status-chip">${todaySessions} today</span></div>${readingLogTableHTML()}</section>`;
 }
 
+function renderBible() {
+  const bible = bibleSummary();
+  const readProgress = bibleBookProgress("read");
+  const audioProgress = bibleBookProgress("audio");
+  document.getElementById("bibleView").innerHTML = `
+    ${pageHero("bibleTitle","Bible Progress","Books completed, books in progress, and exact chapters logged.")}
+    <div class="metric-grid">
+      ${metricCard({ title:"Read", value:bible.yearReadChapters, unit:"chapters", goal:TOTAL_BIBLE_CHAPTERS, tone:"violet", detail:`${bible.yearReadPercent}% of Bible` })}
+      ${metricCard({ title:"Read Books", value:readProgress.completed.length, unit:"completed", goal:BIBLE_BOOKS.length, tone:"cyan", detail:`${readProgress.inProgress.length} in progress` })}
+      ${metricCard({ title:"Listened", value:bible.yearAudioChapters, unit:"chapters", goal:TOTAL_BIBLE_CHAPTERS, tone:"blue", detail:`${bible.yearAudioPercent}% listened` })}
+      ${metricCard({ title:"Audio Books", value:audioProgress.completed.length, unit:"completed", goal:BIBLE_BOOKS.length, tone:"mint", detail:`${audioProgress.inProgress.length} in progress` })}
+    </div>
+    <details class="detail-card"><summary>Books Read</summary><div class="detail-body">${bibleBookListHTML(readProgress.completed, "Completed")}${bibleBookListHTML(readProgress.inProgress, "In Progress")}</div></details>
+    <details class="detail-card"><summary>Audio Bible Books</summary><div class="detail-body">${bibleBookListHTML(audioProgress.completed, "Completed")}${bibleBookListHTML(audioProgress.inProgress, "In Progress")}</div></details>
+    <details class="detail-card"><summary>Not Started Yet</summary><div class="detail-body">${bibleBookListHTML(readProgress.notStarted, "Unread Books")}</div></details>`;
+}
+
+function renderInsights() {
+  const range = Number(document.getElementById("insightRange")?.value || 30);
+  const data = insightData(range);
+  document.getElementById("insightsView").innerHTML = `
+    ${pageHero("insightsTitle","Insights","Clean patterns from your logged data only.")}
+    <section class="panel"><div class="panel-head"><h3>Overview</h3><span class="status-chip">${dataQualityLabel(data)}</span></div>
+      <div class="form-grid"><div class="form-row"><label for="insightRange">Range</label><select id="insightRange"><option value="14" ${range === 14 ? "selected" : ""}>14 days</option><option value="28" ${range === 28 ? "selected" : ""}>28 days</option><option value="30" ${range === 30 ? "selected" : ""}>30 days</option><option value="90" ${range === 90 ? "selected" : ""}>90 days</option><option value="0" ${range === 0 ? "selected" : ""}>All time</option></select></div></div>
+      <div class="book-grid">${insightOverviewRows(data)}</div>
+    </section>
+    ${maintenanceInsightHTML(data)}
+    ${weightTrendHTML(data)}
+    ${nutritionInsightHTML(data)}
+    ${caffeineOverviewHTML(data)}
+    ${sleepRecoveryHTML(data)}
+    ${scoreTrendHTML(data)}
+    ${activityInsightHTML(data)}
+    ${screenInsightHTML(data)}
+    ${correlationSectionHTML("Screen Time", data, "screenEntertainment", "entertainment screen time", ["mood","energy","stress","focus","sleepHours"])}
+    ${correlationSectionHTML("Caffeine", data, "caffeine", "caffeine intake", ["mood","energy","stress","focus","sleepScore"])}
+    ${correlationSectionHTML("Sleep", data, "sleepHours", "sleep duration", ["mood","energy","stress","focus","caffeine"])}
+    ${habitReadingHTML(data)}
+    ${weeklyNarrativeHTML(data)}
+    <section class="panel"><div class="panel-head"><h3>Other Signals</h3><span class="status-chip">${data.length} days</span></div><div class="insight-grid">${dataInsightCards(data).map((item) => panelSmall(item.title, item.metric, item.copy)).join("")}</div></section>`;
+}
+
 function renderMore() {
   document.getElementById("moreView").innerHTML = `
     ${pageHero("moreTitle","More","Settings, imports, exports, AI setup, and saved records.")}
@@ -623,6 +678,7 @@ function renderMore() {
       ${categoryCard("Goals","goals","Targets","Calories, sleep, movement, reading, and time.","icon-goals")}
       ${categoryCard("Import JSON","import","ChatGPT import","Paste structured daily data.","icon-import")}
       ${categoryCard("Data Backup","data","Full backup","Protect saved days, books, listening, goals, and skills.","icon-ledger")}
+      ${categoryCard("Insights","insights","Patterns","Maintenance calories and cross-life correlations.","icon-ai")}
       ${categoryCard("AI Tracker","ai","Future backend","Natural language and photo capture.","icon-ai")}
       ${categoryCard("Ledger","ledger","Daily records","Full saved history by date.","icon-ledger")}
       ${categoryCard("Share","share","Obsidian and backup","Copy weekly reviews or export data.","icon-read")}
@@ -632,7 +688,7 @@ function renderGoals() {
   document.getElementById("goalsView").innerHTML = `
     ${pageHero("goalsTitle","Goals","These targets shape dashboard rings and weekly summaries.")}
     <section class="panel"><form id="goalsForm" class="form-grid">
-      ${input("calorieGoal","Calorie target",settings.calorieGoal,"number")}${input("proteinGoal","Protein target g",settings.proteinGoal,"number")}${input("weightGoal","Weight goal kg",settings.weightGoal,"number","0.1")}${input("stepsGoal","Steps target",settings.stepsGoal,"number")}${input("movementGoal","Workout minute target",settings.movementGoal,"number")}${input("sleepGoal","Sleep target h",settings.sleepGoal,"number","0.1")}${input("sleepScoreGoal","Sleep score target",settings.sleepScoreGoal,"number")}${input("screenUsefulGoal","Useful screen target min",settings.screenUsefulGoal,"number")}${input("screenEntertainmentLimit","Entertainment screen limit min",settings.screenEntertainmentLimit,"number")}${input("waterGoal","Water target L",settings.waterGoal,"number","0.1")}${input("readingDaysGoal","Reading days per week",settings.readingDaysGoal,"number")}${input("bibleChaptersGoal","Bible chapters per week",settings.bibleChaptersGoal,"number")}${select("theme","Theme",settings.theme,["auto","light","dark"])}
+      ${input("calorieGoal","Calorie target",settings.calorieGoal,"number")}${input("proteinGoal","Protein target g",settings.proteinGoal,"number")}${input("fiberGoal","Fiber target g",settings.fiberGoal,"number")}${input("waterGoal","Water target L",settings.waterGoal,"number","0.1")}${input("caffeineLimit","Caffeine limit mg",settings.caffeineLimit,"number")}${input("weightGoal","Weight goal kg",settings.weightGoal,"number","0.1")}${input("stepsGoal","Steps target",settings.stepsGoal,"number")}${input("movementGoal","Workout minute target",settings.movementGoal,"number")}${input("sleepGoal","Sleep target h",settings.sleepGoal,"number","0.1")}${input("sleepScoreGoal","Sleep score target",settings.sleepScoreGoal,"number")}${input("screenUsefulGoal","Useful screen target min",settings.screenUsefulGoal,"number")}${input("screenEntertainmentLimit","Entertainment screen limit min",settings.screenEntertainmentLimit,"number")}${input("readingDaysGoal","Reading days per week",settings.readingDaysGoal,"number")}${input("bibleChaptersGoal","Bible chapters per week",settings.bibleChaptersGoal,"number")}${select("theme","Theme",settings.theme,["auto","light","dark"])}
       <div class="form-actions"><button class="primary-button" type="submit">Save Goals</button></div>
     </form></section>`;
 }
@@ -701,6 +757,7 @@ function renderEdit() {
       ${input("sleep_hours","Sleep hours",d.sleepHours,"number","0.1")}${input("sleep_score","Sleep score",d.sleepScore,"number")}${input("bed_time","Bedtime",d.bedTime,"time")}${input("wake_time","Wake time",d.wakeTime,"time")}
       ${input("screen_total","Total screen minutes",d.screenTotal,"number")}${input("screen_useful","Useful screen minutes",d.screenUseful,"number")}${input("screen_entertainment","Entertainment screen minutes",d.screenEntertainment,"number")}
       ${input("mood","Mood /10",d.mood,"number")}${input("energy","Energy /10",d.energy,"number")}${input("focus","Focus /10",d.focus,"number")}${input("stress","Stress /10",d.stress,"number")}
+      ${input("tags","Day tags",d.tags.join(", "),"text")}
       <div class="form-row form-wide"><label for="notes">Notes</label><textarea id="notes" name="notes">${escapeHTML(d.notes || "")}</textarea></div>
       <div class="form-actions"><button class="primary-button" type="submit">Save Corrections</button><button class="soft-button" type="button" data-page="dashboard">Back</button></div>
     </form></section>
@@ -728,6 +785,57 @@ function insightCards() {
 }
 function panelSmall(title, metric, copy) {
   return `<article class="panel"><div class="panel-head"><h3>${escapeHTML(title)}</h3><span class="status-chip">${escapeHTML(metric)}</span></div><p class="panel-note">${escapeHTML(copy)}</p></article>`;
+}
+function insightData(range = 30) {
+  const dates = loggedDates();
+  const selected = range ? datesBack(range) : dates;
+  return selected.map((date) => ({ date, ...dayData(date) })).filter((d) => dates.includes(d.date));
+}
+function percent(part, whole) {
+  return whole ? Math.round((part / whole) * 100) : 0;
+}
+function coverage(data, key) {
+  return data.length ? percent(data.filter((d) => num(d[key]) !== null).length, data.length) : 0;
+}
+function confidenceLabel(count, coveragePct = 100) {
+  if (count >= 28 && coveragePct >= 75) return "High";
+  if (count >= 10 && coveragePct >= 50) return "Medium";
+  return "Low";
+}
+function dataQualityLabel(data) {
+  const calorieDays = data.filter((d) => d.calories !== null).length;
+  const weightDays = data.filter((d) => d.weight !== null).length;
+  return `${data.length} days · ${confidenceLabel(Math.min(calorieDays, weightDays), Math.min(coverage(data,"calories"), coverage(data,"weight")))} confidence`;
+}
+function insightOverviewRows(data) {
+  return [
+    snapshotRow("Tracked days", "Days with any saved record in this range.", data.length),
+    snapshotRow("Nutrition coverage", "Days with calories logged.", `${coverage(data,"calories")}%`),
+    snapshotRow("Weight coverage", "Days with body weight logged.", `${coverage(data,"weight")}%`),
+    snapshotRow("Mood coverage", "Days with mood/energy/focus/stress data.", `${Math.max(coverage(data,"mood"), coverage(data,"energy"), coverage(data,"focus"), coverage(data,"stress"))}%`)
+  ].join("");
+}
+function linearRegression(points) {
+  if (points.length < 2) return null;
+  const xAvg = average(points.map((p) => p.x)), yAvg = average(points.map((p) => p.y));
+  const numerator = points.reduce((sum, p) => sum + ((p.x - xAvg) * (p.y - yAvg)), 0);
+  const denominator = points.reduce((sum, p) => sum + ((p.x - xAvg) ** 2), 0);
+  if (!denominator) return null;
+  return { slope: numerator / denominator, intercept: yAvg - ((numerator / denominator) * xAvg) };
+}
+function movingAverageRows(data, key, windowSize = 7) {
+  return data.map((row, index) => {
+    const sample = data.slice(Math.max(0, index - windowSize + 1), index + 1).map((item) => item[key]);
+    return { date: row.date, value: average(sample) };
+  }).filter((row) => row.value !== null);
+}
+function valuesFor(data, key) {
+  return data.map((d) => num(d[key])).filter((value) => value !== null);
+}
+function trendLabel(changePerWeek, unit = "") {
+  if (changePerWeek === null) return "Not enough data";
+  if (Math.abs(changePerWeek) < 0.1) return `Stable (${fmt(changePerWeek,2)}${unit}/week)`;
+  return `${changePerWeek > 0 ? "Trending upward" : "Trending downward"} (${changePerWeek > 0 ? "+" : ""}${fmt(changePerWeek,2)}${unit}/week)`;
 }
 function pairedValues(data, xKey, yKey) {
   return data.map((d) => [num(d[xKey]), num(d[yKey])]).filter(([x, y]) => x !== null && y !== null);
@@ -757,6 +865,203 @@ function correlationInsight(data, title, xKey, yKey, xLabel, yLabel) {
   const direction = r > 0 ? "higher" : "lower";
   const strength = Math.abs(r) >= 0.6 ? "fairly clear" : "mild";
   return { title, metric:`r ${fmt(r,2)}`, copy:`Logged data suggests a ${strength} pattern: ${direction} ${xLabel} tended to appear with ${r > 0 ? "higher" : "lower"} ${yLabel}.` };
+}
+function correlationText(r, xLabel, yLabel) {
+  if (r === null) return "Not enough paired data yet.";
+  if (Math.abs(r) < 0.25) return `No clear ${xLabel}-${yLabel} pattern yet.`;
+  const strength = Math.abs(r) >= 0.6 ? "stronger" : Math.abs(r) >= 0.4 ? "moderate" : "mild";
+  return `${strength} pattern: higher ${xLabel} has tended to line up with ${r > 0 ? "higher" : "lower"} ${yLabel}.`;
+}
+function correlationRows(data, xKey, xLabel, yKeys) {
+  return yKeys.map((key) => {
+    const pairs = pairedValues(data, xKey, key);
+    const r = pearson(pairs);
+    return { metric:key, pairs:pairs.length, r, confidence:confidenceLabel(pairs.length, percent(pairs.length, data.length || 1)), text:correlationText(r, xLabel, key) };
+  });
+}
+function correlationSectionHTML(title, data, xKey, xLabel, yKeys) {
+  const rows = correlationRows(data, xKey, xLabel, yKeys);
+  return `<section class="panel"><div class="panel-head"><h3>${escapeHTML(title)}</h3><span class="status-chip">${escapeHTML(xLabel)}</span></div>
+    <div class="list">${rows.map((row) => snapshotRow(`${title} vs ${row.metric}`, `${row.text} Confidence: ${row.confidence} from ${row.pairs} paired days.`, row.r === null ? `${row.pairs} days` : `r ${fmt(row.r,2)}`)).join("")}</div>
+    <p class="panel-note">These are correlations from logged same-day data, not proof of cause and effect.</p>
+  </section>`;
+}
+function maintenanceEstimateForDays(days) {
+  const data = insightData(days);
+  const calendarDays = data.length;
+  const calorieDays = data.filter((d) => d.calories !== null);
+  const weighIns = data.filter((d) => d.weight !== null);
+  if (calendarDays < 14 || calorieDays.length < 8 || weighIns.length < 5) return { days, ready:false, calendarDays, calorieDays:calorieDays.length, weighIns:weighIns.length };
+  const smoothed = movingAverageRows(data, "weight", 7).map((row, index) => ({ x:index, y:row.value }));
+  const trend = linearRegression(smoothed);
+  if (!trend) return { days, ready:false, calendarDays, calorieDays:calorieDays.length, weighIns:weighIns.length };
+  const weightChangePerDay = trend.slope;
+  const weightChangePerWeek = weightChangePerDay * 7;
+  const avgCalories = average(calorieDays.map((d) => d.calories));
+  const maintenance = avgCalories - (weightChangePerDay * 7700);
+  const coveragePct = percent(calorieDays.length, calendarDays);
+  const confidence = days >= 28 && coveragePct >= 75 && weighIns.length >= 12 ? "High" : confidenceLabel(Math.min(calorieDays.length, weighIns.length), Math.min(coveragePct, percent(weighIns.length, calendarDays)));
+  return { days, ready:true, maintenance, avgCalories, weightChangePerWeek, coveragePct, confidence, calendarDays, calorieDays:calorieDays.length, weighIns:weighIns.length };
+}
+function maintenanceInsightHTML() {
+  const estimates = [maintenanceEstimateForDays(14), maintenanceEstimateForDays(28)];
+  const best = [...estimates].reverse().find((item) => item.ready) || estimates.find((item) => item.ready);
+  if (!best) return `<section class="panel"><div class="panel-head"><h3>Weight and Calories</h3><span class="status-chip">Need data</span></div><p class="panel-note">Maintenance estimate waits for at least 14 calendar days, 8 calorie-tracked days, and 5 weigh-ins. Missing values are not treated as zero.</p></section>`;
+  return `<section class="panel"><div class="panel-head"><h3>Weight and Calories</h3><span class="status-chip">${best.confidence} confidence</span></div>
+    <div class="book-grid">
+      ${snapshotRow("Estimated maintenance", "Smoothed from logged calories and 7-day weight trend.", `${fmt(best.maintenance)} kcal/day`)}
+      ${snapshotRow("14-day estimate", estimateLabel(estimates[0]), estimates[0].ready ? `${fmt(estimates[0].maintenance)} kcal` : "Need data")}
+      ${snapshotRow("28-day estimate", estimateLabel(estimates[1]), estimates[1].ready ? `${fmt(estimates[1].maintenance)} kcal` : "Need data")}
+      ${snapshotRow("Weight trend", "Based on smoothed weigh-ins, not daily scale noise.", `${best.weightChangePerWeek >= 0 ? "+" : ""}${fmt(best.weightChangePerWeek,2)} kg/week`)}
+      ${snapshotRow("Suggested targets", `Maintain ${fmt(best.maintenance)}, mild cut ${fmt(best.maintenance - 250)}, faster cut ${fmt(best.maintenance - 500)}, mild gain ${fmt(best.maintenance + 250)}.`, "estimate")}
+      ${snapshotRow("Data used", `${best.calorieDays}/${best.calendarDays} calorie days, ${best.weighIns} weigh-ins.`, `${best.coveragePct}% food coverage`)}
+    </div>
+    <p class="panel-note">Estimate warning: water retention, sodium, creatine, travel, food-label errors, and short tracking windows can shift this noticeably.</p>
+  </section>`;
+}
+function estimateLabel(item) {
+  return item.ready ? `${item.confidence} confidence · ${item.calorieDays} calorie days · ${item.weighIns} weigh-ins` : `${item.calorieDays} calorie days · ${item.weighIns} weigh-ins`;
+}
+function weightTrendHTML(data) {
+  const weights = data.filter((d) => d.weight !== null).sort((a,b) => a.date.localeCompare(b.date));
+  if (weights.length < 2) return `<section class="panel"><div class="panel-head"><h3>Weight Trend</h3><span class="status-chip">Need weigh-ins</span></div><p class="panel-note">Log at least two weigh-ins to show a trend. Seven or more is better.</p></section>`;
+  const points = movingAverageRows(data, "weight", 7).map((row, index) => ({ x:index, y:row.value }));
+  const regression = linearRegression(points);
+  const weekly = regression ? regression.slope * 7 : null;
+  return `<section class="panel"><div class="panel-head"><h3>Weight Trend</h3><span class="status-chip">${weights.length} weigh-ins</span></div>
+    <div class="book-grid">
+      ${snapshotRow("Latest weight", "Most recent logged body weight.", `${fmt(weights[weights.length - 1].weight,1)} kg`)}
+      ${snapshotRow("7-day average", "Moving average smooths normal scale noise.", `${fmt(average(weights.slice(-7).map((d) => d.weight)),1)} kg`)}
+      ${snapshotRow("14-day average", "Longer average for trend context.", `${fmt(average(weights.slice(-14).map((d) => d.weight)),1)} kg`)}
+      ${snapshotRow("Weekly rate", "Do not over-read single-day changes.", trendLabel(weekly, " kg"))}
+    </div>
+    ${sparklineHTML(points.map((p) => p.y))}
+  </section>`;
+}
+function sparklineHTML(values) {
+  const valid = values.filter((value) => value !== null);
+  if (valid.length < 2) return "";
+  const min = Math.min(...valid), max = Math.max(...valid), span = max - min || 1;
+  const points = valid.map((value, index) => `${(index / Math.max(1, valid.length - 1)) * 100},${36 - ((value - min) / span) * 32}`).join(" ");
+  return `<svg class="sparkline" viewBox="0 0 100 40" preserveAspectRatio="none" aria-hidden="true"><polyline points="${points}"></polyline></svg>`;
+}
+function nutritionInsightHTML(data) {
+  const calorieDays = data.filter((d) => d.calories !== null);
+  const proteinDays = data.filter((d) => d.protein !== null);
+  const waterDays = data.filter((d) => d.water !== null);
+  const fiberDays = data.filter((d) => d.fiber !== null);
+  const rows = [
+    snapshotRow("Average calories", `${calorieDays.length} tracked days.`, `${fmt(average(calorieDays.map((d) => d.calories)))} kcal`),
+    snapshotRow("Average protein", `${percent(proteinDays.filter((d) => d.protein >= settings.proteinGoal).length, proteinDays.length)}% of protein days hit target.`, `${fmt(average(proteinDays.map((d) => d.protein)))} g`),
+    snapshotRow("Average fiber", `${percent(fiberDays.filter((d) => d.fiber >= settings.fiberGoal).length, fiberDays.length)}% of fiber days hit target.`, `${fmt(average(fiberDays.map((d) => d.fiber)))} g`),
+    snapshotRow("Average water", `${percent(waterDays.filter((d) => d.water >= settings.waterGoal).length, waterDays.length)}% of water days hit target.`, `${fmt(average(waterDays.map((d) => d.water)),1)} L`),
+    snapshotRow("Protein density", "Protein per 100 kcal on days with both logged.", `${fmt(proteinDensity(data),1)} g/100 kcal`),
+    snapshotRow("Fiber density", "Fiber per 1,000 kcal on days with both logged.", `${fmt(fiberDensity(data),1)} g/1000 kcal`)
+  ];
+  const patternRows = [
+    correlationInsight(data, "Protein and calories", "protein", "calories", "protein", "calories"),
+    correlationInsight(data, "Fiber and calories", "fiber", "calories", "fiber", "calories"),
+    correlationInsight(data, "Protein and fiber", "protein", "fiber", "protein", "fiber")
+  ].filter(Boolean);
+  return `<section class="panel"><div class="panel-head"><h3>Nutrition Patterns</h3><span class="status-chip">${data.filter((d) => d.calories !== null).length} calorie days</span></div>
+    <div class="list">${rows.join("")}${patternRows.length ? patternRows.map((item) => snapshotRow(item.title, item.copy, item.metric)).join("") : ""}</div>
+    <p class="panel-note">Useful for questions like whether higher protein or fiber lines up with lower total calories.</p>
+  </section>`;
+}
+function proteinDensity(data) {
+  const rows = data.filter((d) => d.protein !== null && d.calories !== null && d.calories > 0);
+  return average(rows.map((d) => (d.protein / d.calories) * 100));
+}
+function fiberDensity(data) {
+  const rows = data.filter((d) => d.fiber !== null && d.calories !== null && d.calories > 0);
+  return average(rows.map((d) => (d.fiber / d.calories) * 1000));
+}
+function sleepRecoveryHTML(data) {
+  const sleepDays = data.filter((d) => d.sleepHours !== null);
+  const below6 = sleepDays.filter((d) => d.sleepHours < 6).length;
+  const below7 = sleepDays.filter((d) => d.sleepHours < 7).length;
+  const belowTarget = sleepDays.filter((d) => settings.sleepGoal && d.sleepHours < settings.sleepGoal).length;
+  const sleepDebt = total(sleepDays.map((d) => Math.max(0, (settings.sleepGoal || 0) - d.sleepHours)));
+  return `<section class="panel"><div class="panel-head"><h3>Sleep and Recovery</h3><span class="status-chip">${confidenceLabel(sleepDays.length, coverage(data,"sleepHours"))}</span></div>
+    <div class="book-grid">
+      ${snapshotRow("Average sleep", `${sleepDays.length} nights logged.`, `${fmt(average(sleepDays.map((d) => d.sleepHours)),1)} h`)}
+      ${snapshotRow("Average sleep score", "Only exact logged sleep scores are counted.", `${fmt(average(data.map((d) => d.sleepScore)))}/100`)}
+      ${snapshotRow("Sleep debt", `Compared with your ${fmt(settings.sleepGoal,1)} h target.`, `${fmt(sleepDebt,1)} h`)}
+      ${snapshotRow("Short nights", `${below6} below 6h · ${below7} below 7h · ${belowTarget} below target.`, "count")}
+    </div>
+  </section>`;
+}
+function caffeineOverviewHTML(data) {
+  const caffeineDays = data.filter((d) => d.caffeine !== null);
+  const values = caffeineDays.map((d) => d.caffeine);
+  return `<section class="panel"><div class="panel-head"><h3>Caffeine</h3><span class="status-chip">${confidenceLabel(caffeineDays.length, coverage(data,"caffeine"))}</span></div>
+    <div class="book-grid">
+      ${snapshotRow("Average caffeine", `${caffeineDays.length} days logged.`, `${fmt(average(values))} mg`)}
+      ${snapshotRow("Highest day", "Highest total daily caffeine in this range.", `${fmt(values.length ? Math.max(...values) : null)} mg`)}
+      ${snapshotRow("Above limit", `Configured limit is ${fmt(settings.caffeineLimit)} mg.`, `${caffeineDays.filter((d) => d.caffeine > settings.caffeineLimit).length} days`)}
+      ${snapshotRow("Caffeine-free days", "Only days explicitly logged as 0 count here.", `${caffeineDays.filter((d) => d.caffeine === 0).length} days`)}
+    </div>
+    <p class="panel-note">This app currently analyzes total daily caffeine only. It does not infer caffeine timing unless timestamps are logged later.</p>
+  </section>`;
+}
+function scoreTrendHTML(data) {
+  return `<section class="panel"><div class="panel-head"><h3>Mood, Energy, Focus, Stress</h3><span class="status-chip">${data.length} days</span></div>
+    <div class="book-grid">
+      ${["mood","energy","focus","stress"].map((key) => snapshotRow(key[0].toUpperCase() + key.slice(1), `${coverage(data,key)}% coverage in this range.`, `${fmt(average(data.map((d) => d[key])),1)}/10`)).join("")}
+    </div>
+  </section>`;
+}
+function activityInsightHTML(data) {
+  const active = data.filter((d) => d.steps !== null || d.workoutMinutes !== null);
+  const workoutTypes = {};
+  data.forEach((d) => d.workouts.forEach((w) => { const type = w.type || "Workout"; workoutTypes[type] = (workoutTypes[type] || 0) + (num(w.minutes) || 0); }));
+  const typeText = Object.entries(workoutTypes).sort((a,b) => b[1] - a[1]).map(([type, minutes]) => `${type}: ${fmt(minutes)} min`).join("; ") || "No explicit workouts logged.";
+  return `<section class="panel"><div class="panel-head"><h3>Activity</h3><span class="status-chip">${active.length} active days</span></div>
+    <div class="book-grid">
+      ${snapshotRow("Average steps", "Ordinary steps are not counted as workouts.", `${fmt(average(data.map((d) => d.steps)))} steps`)}
+      ${snapshotRow("Step goal days", `${data.filter((d) => d.steps !== null && d.steps >= settings.stepsGoal).length} days reached target.`, `${fmt(settings.stepsGoal)} goal`)}
+      ${snapshotRow("Workout minutes", "Only explicitly logged workouts count here.", `${fmt(total(data.map((d) => d.workoutMinutes)))} min`)}
+      ${snapshotRow("By type", typeText, "logged")}
+    </div>
+  </section>`;
+}
+function screenInsightHTML(data) {
+  const screenDays = data.filter((d) => d.screenTotal !== null || d.screenUseful !== null || d.screenEntertainment !== null);
+  const useful = total(screenDays.map((d) => d.screenUseful)), entertainment = total(screenDays.map((d) => d.screenEntertainment)), totalScreen = total(screenDays.map((d) => d.screenTotal));
+  const denominator = totalScreen || useful + entertainment;
+  return `<section class="panel"><div class="panel-head"><h3>Screen Time</h3><span class="status-chip">${screenDays.length} days</span></div>
+    <div class="book-grid">
+      ${snapshotRow("Average total", "Only logged screen-time values are counted.", `${fmt(average(screenDays.map((d) => d.screenTotal)))} min`)}
+      ${snapshotRow("Useful share", "Classification comes from your imported/useful values.", `${percent(useful, denominator)}%`)}
+      ${snapshotRow("Entertainment share", "The tracker app itself should be excluded from phone Screen Time before importing.", `${percent(entertainment, denominator)}%`)}
+      ${snapshotRow("Entertainment average", `${data.filter((d) => d.screenEntertainment !== null && d.screenEntertainment > settings.screenEntertainmentLimit).length} days above limit.`, `${fmt(average(data.map((d) => d.screenEntertainment)))} min`)}
+    </div>
+  </section>`;
+}
+function habitReadingHTML(data) {
+  const readingDays = data.filter((d) => d.reading.length).length;
+  const listeningDays = data.filter((d) => d.audioReading.length).length;
+  const bibleDays = data.filter((d) => d.bible.length).length;
+  const audioBibleDays = data.filter((d) => d.audioBible.length).length;
+  return `<section class="panel"><div class="panel-head"><h3>Habits and Reading</h3><span class="status-chip">${data.length} days</span></div>
+    <div class="book-grid">
+      ${snapshotRow("Bible reading", "Separate from Audio Bible.", `${bibleDays} days`)}
+      ${snapshotRow("Audio Bible", "Separate from Bible reading.", `${audioBibleDays} days`)}
+      ${snapshotRow("Regular reading", "Books read with your eyes.", `${readingDays} days`)}
+      ${snapshotRow("Audiobooks", "Listening is tracked separately.", `${listeningDays} days`)}
+    </div>
+  </section>`;
+}
+function weeklyNarrativeHTML(data) {
+  const week = data.slice(-7);
+  const notes = [];
+  const weights = week.filter((d) => d.weight !== null).map((d) => d.weight);
+  if (weights.length >= 2) notes.push(`Weight changed ${weights[weights.length - 1] >= weights[0] ? "+" : ""}${fmt(weights[weights.length - 1] - weights[0],1)} kg across logged weigh-ins.`);
+  if (coverage(week,"protein") >= 50) notes.push(`Protein averaged ${fmt(average(week.map((d) => d.protein)))} g, with ${week.filter((d) => d.protein !== null && d.protein >= settings.proteinGoal).length} days at target.`);
+  if (coverage(week,"sleepHours") >= 50) notes.push(`Sleep averaged ${fmt(average(week.map((d) => d.sleepHours)),1)} h.`);
+  if (coverage(week,"screenEntertainment") >= 50) notes.push(`Entertainment screen time averaged ${fmt(average(week.map((d) => d.screenEntertainment)))} min.`);
+  if (!notes.length) notes.push("Not enough complete data was logged this week for a useful deterministic summary.");
+  return `<section class="panel"><div class="panel-head"><h3>Weekly Summary</h3><span class="status-chip">local</span></div><p class="panel-note">${escapeHTML(notes.join(" "))}</p></section>`;
 }
 function dataInsightCards(data) {
   const insights = [
@@ -839,6 +1144,46 @@ function countBibleChapters(items) { return uniqueBibleChapters(items).size; }
 function uniqueBooks(items) { return [...new Set(items.map((item) => matchBibleBook(item.book)).filter(Boolean))].sort(); }
 function completedBibleBooks(chapterSet) {
   return BIBLE_BOOKS.filter(([book, chapters]) => Array.from({ length: chapters }, (_, i) => i + 1).every((chapter) => chapterSet.has(`${book}:${chapter}`))).map(([book]) => book);
+}
+function bibleBookProgress(kind = "read") {
+  const yearKey = selectedDate.slice(0,4);
+  const items = [];
+  loggedDates().forEach((date) => {
+    if (!date.startsWith(yearKey)) return;
+    const d = dayData(date);
+    (kind === "audio" ? d.audioBible : d.bible).forEach((item) => items.push(item));
+  });
+  const byBook = new Map();
+  items.forEach((item) => {
+    const book = matchBibleBook(item.book);
+    if (!book) return;
+    if (!byBook.has(book)) byBook.set(book, new Set());
+    item.chapters.forEach((chapter) => byBook.get(book).add(chapter));
+  });
+  const rows = BIBLE_BOOKS.map(([book, totalChapters]) => {
+    const chapters = [...(byBook.get(book) || new Set())].sort((a,b) => a - b);
+    const percent = Math.round((chapters.length / totalChapters) * 100);
+    return { book, totalChapters, chapters, percent };
+  });
+  return {
+    completed: rows.filter((row) => row.chapters.length === row.totalChapters),
+    inProgress: rows.filter((row) => row.chapters.length && row.chapters.length < row.totalChapters),
+    notStarted: rows.filter((row) => !row.chapters.length)
+  };
+}
+function chapterRanges(chapters) {
+  if (!chapters.length) return "No chapters logged";
+  const ranges = [];
+  let start = chapters[0], prev = chapters[0];
+  chapters.slice(1).forEach((chapter) => {
+    if (chapter === prev + 1) prev = chapter;
+    else { ranges.push(start === prev ? `${start}` : `${start}-${prev}`); start = chapter; prev = chapter; }
+  });
+  ranges.push(start === prev ? `${start}` : `${start}-${prev}`);
+  return ranges.join(", ");
+}
+function bibleBookListHTML(items, title) {
+  return `<section class="mini-section"><div class="panel-head"><h3>${escapeHTML(title)}</h3><span class="status-chip">${items.length}</span></div><div class="list">${items.length ? items.map((item) => snapshotRow(item.book, `Chapters ${chapterRanges(item.chapters)}`, `${item.chapters.length}/${item.totalChapters}`)).join("") : `<div class="empty">Nothing here yet.</div>`}</div></section>`;
 }
 function readingSummary() {
   const all = Object.entries(bookStatuses).map(([key, book]) => ({ ...book, library: readingLibraryName(book.library), _key:key })).sort((a,b) => (b.lastSeen || "").localeCompare(a.lastSeen || ""));
@@ -951,7 +1296,7 @@ function skillListHTML() {
 function setActivePage(page, scroll = true) {
   activePage = page;
   document.querySelectorAll(".page").forEach((el) => el.classList.toggle("is-active", el.id === `page-${page}`));
-  document.querySelectorAll(".tab-button").forEach((button) => button.classList.toggle("is-active", button.dataset.page === page || (["goals","import","ai","ledger","share","data"].includes(page) && button.dataset.page === "more")));
+  document.querySelectorAll(".tab-button").forEach((button) => button.classList.toggle("is-active", button.dataset.page === page || (["bible","insights","goals","import","ai","ledger","share","data","edit"].includes(page) && button.dataset.page === "more")));
   if (scroll) window.scrollTo({ top: 0, behavior: "smooth" });
 }
 function formObject(form) { return Object.fromEntries(new FormData(form).entries()); }
@@ -1107,6 +1452,8 @@ function applyDayCorrections(values) {
     if (values[key]) next[key] = values[key];
     else delete next[key];
   });
+  if (values.tags) next.tags = String(values.tags).split(",").map((tag) => tag.trim()).filter(Boolean);
+  else delete next.tags;
   next.time = {
     ...(next.time && typeof next.time === "object" ? next.time : {}),
     total: values.screen_total === "" ? undefined : num(values.screen_total),
@@ -1166,7 +1513,59 @@ function buildBackup() {
   }, null, 2);
 }
 function chatGPTPrompt() {
-  return `You are my structured life tracking assistant. Track my food, sleep, workouts, screen time, Bible reading, Audio Bible listening, book reading, audiobook listening, mood, energy, focus, weight, steps, water, caffeine, supplements, and notes throughout the day.\n\nWhen I say \"close the day\", \"export\", \"give me the JSON\", or anything similar, return ONE valid raw JSON object only. Do not use Markdown. Do not use a code block. Do not write explanations before or after it. Do not include comments or trailing commas. The first character of your reply must be { and the last character must be }.\n\nUse this exact shape when values are known:\n{\n  \"date\": \"YYYY-MM-DD\",\n  \"calories\": number,\n  \"protein\": number,\n  \"carbs\": number,\n  \"fat\": number,\n  \"fiber\": number,\n  \"water\": number,\n  \"caffeine\": number,\n  \"creatine\": number,\n  \"weight\": number,\n  \"steps\": number,\n  \"sleep\": { \"hours\": number, \"score\": number, \"bed_time\": \"HH:MM\", \"wake_time\": \"HH:MM\" },\n  \"workouts\": [{ \"type\": \"Cardio|Weight training|Calisthenics|Mobility|Other\", \"minutes\": number, \"notes\": \"\" }],\n  \"screen_time\": { \"total\": number, \"useful\": number, \"entertainment\": number, \"apps\": [{ \"name\": \"WhatsApp\", \"minutes\": number }] },\n  \"bible\": [{ \"book\": \"John\", \"chapters\": [3], \"minutes\": number }],\n  \"audio_bible\": [{ \"book\": \"Romans\", \"chapters\": [8], \"minutes\": number }],\n  \"reading\": [{ \"title\": \"Book Title\", \"author\": \"Author Name\", \"library\": \"General Library\", \"pages\": number, \"chapters\": \"\", \"category\": \"Self improvement|Faith|Fiction|Other\", \"status\": \"current|finished|gave-up\" }],\n  \"audio_reading\": [{ \"title\": \"Audiobook Title\", \"author\": \"Author Name\", \"library\": \"Audible|YouTube|General Library\", \"source\": \"Audible|YouTube|General Library\", \"minutes\": number, \"chapters\": \"\", \"category\": \"Audiobook|Self improvement|Faith|Fiction|Other\", \"status\": \"current|finished|gave-up\" }],\n  \"mood\": number,\n  \"energy\": number,\n  \"focus\": number,\n  \"stress\": number,\n  \"notes\": \"\"\n}\n\nRules:\n- Missing values should be omitted, not set to zero.\n- Only use zero when I explicitly logged zero.\n- Keep regular reading separate from audiobook listening.\n- Keep Bible reading separate from Audio Bible listening.\n- Any physical or digital book I read with my eyes goes in \"reading\".\n- Any audiobook goes in \"audio_reading\".\n- For every regular book, include \"author\" when known and \"library\" for who owns it or where it belongs.\n- For every audiobook, include \"author\" when known and use \"library\" plus \"source\" for where I listened to it, such as Audible or YouTube.\n- If no book library, audiobook source, or owner is known, use \"General Library\".\n- Use the same exact title spelling for the same book across days so the app can consolidate it.\n- Any Bible I read goes in \"bible\".\n- Any Bible I listen to goes in \"audio_bible\".\n- For nutrition, read labels first when labels are available.\n- If calories are estimated or uncertain, slightly overestimate calories.\n- If protein or fiber are estimated or uncertain, slightly underestimate protein and fiber.\n- Do not invent exact precision when uncertain; use reasonable rounded numbers.\n- Any book or audiobook mention should be status \"current\" unless I clearly say I finished it or gave up on it.\n- For screen time, count WhatsApp as useful screen time. Count all other screen time as entertainment unless I explicitly say it was work/useful.\n- If I paste this app's import error back to you, correct yourself by returning raw valid JSON only.`;
+  return `You are my structured life tracking assistant. Track my food, sleep, workouts, screen time, Bible reading, Audio Bible listening, book reading, audiobook listening, mood, energy, focus, weight, steps, water, caffeine, supplements, day tags, and notes throughout the day.
+
+When I say "close the day", "export", "give me the JSON", or anything similar, return ONE valid raw JSON object only. Do not use Markdown. Do not use a code block. Do not write explanations before or after it. Do not include comments or trailing commas. The first character of your reply must be { and the last character must be }.
+
+Use this exact shape when values are known:
+{
+  "date": "YYYY-MM-DD",
+  "calories": number,
+  "protein": number,
+  "carbs": number,
+  "fat": number,
+  "fiber": number,
+  "water": number,
+  "caffeine": number,
+  "creatine": number,
+  "weight": number,
+  "steps": number,
+  "sleep": { "hours": number, "score": number, "bed_time": "HH:MM", "wake_time": "HH:MM" },
+  "workouts": [{ "type": "Cardio|Weight training|Calisthenics|Mobility|Other", "minutes": number, "notes": "" }],
+  "screen_time": { "total": number, "useful": number, "entertainment": number, "apps": [{ "name": "WhatsApp", "minutes": number }] },
+  "bible": [{ "book": "John", "chapters": [3], "minutes": number }],
+  "audio_bible": [{ "book": "Romans", "chapters": [8], "minutes": number }],
+  "reading": [{ "title": "Book Title", "author": "Author Name", "library": "General Library", "pages": number, "chapters": "", "category": "Self improvement|Faith|Fiction|Other", "status": "current|finished|gave-up" }],
+  "audio_reading": [{ "title": "Audiobook Title", "author": "Author Name", "library": "Audible|YouTube|General Library", "source": "Audible|YouTube|General Library", "minutes": number, "chapters": "", "category": "Audiobook|Self improvement|Faith|Fiction|Other", "status": "current|finished|gave-up" }],
+  "mood": number,
+  "energy": number,
+  "focus": number,
+  "stress": number,
+  "tags": ["Social", "Travel", "Work-heavy", "Recovery", "Normal", "Sick", "Other"],
+  "notes": ""
+}
+
+Rules:
+- Missing values should be omitted, not set to zero.
+- Only use zero when I explicitly logged zero.
+- Keep regular reading separate from audiobook listening.
+- Keep Bible reading separate from Audio Bible listening.
+- Any physical or digital book I read with my eyes goes in "reading".
+- Any audiobook goes in "audio_reading".
+- For every regular book, include "author" when known and "library" for who owns it or where it belongs.
+- For every audiobook, include "author" when known and use "library" plus "source" for where I listened to it, such as Audible or YouTube.
+- If no book library, audiobook source, or owner is known, use "General Library".
+- Use the same exact title spelling for the same book across days so the app can consolidate it.
+- Include optional "tags" only when I clearly mention a day type like Social, Travel, Work-heavy, Recovery, Normal, Sick, or Other. Do not guess tags from private notes unless I say the tag.
+- Any Bible I read goes in "bible".
+- Any Bible I listen to goes in "audio_bible".
+- For nutrition, read labels first when labels are available.
+- If calories are estimated or uncertain, slightly overestimate calories.
+- If protein or fiber are estimated or uncertain, slightly underestimate protein and fiber.
+- Do not invent exact precision when uncertain; use reasonable rounded numbers.
+- Any book or audiobook mention should be status "current" unless I clearly say I finished it or gave up on it.
+- For screen time, count WhatsApp as useful screen time. Count all other screen time as entertainment unless I explicitly say it was work/useful.
+- If I paste this app's import error back to you, correct yourself by returning raw valid JSON only.`;
 }
 async function copyText(text, label = "Copied") {
   try { await navigator.clipboard.writeText(text); toast(label); } catch { toast("Copy failed"); }
@@ -1182,6 +1581,10 @@ function pauseTransientWork() {
   clearTimeout(toast.timer);
   document.getElementById("toast")?.classList.remove("show");
   document.querySelectorAll(".ledger-row.is-confirming").forEach((row) => row.classList.remove("is-confirming"));
+  closeAllDetails();
+}
+function closeAllDetails() {
+  document.querySelectorAll("details[open]").forEach((detail) => { detail.open = false; });
 }
 function cleanupBrowserCache() {
   if ("serviceWorker" in navigator && location.protocol !== "file:" && navigator.serviceWorker.getRegistrations) {
@@ -1284,6 +1687,7 @@ document.addEventListener("touchend", (event) => {
 }, { passive: true });
 document.addEventListener("change", (event) => {
   if (event.target.matches("#viewDate, [data-date-input]")) { selectedDate = event.target.value || selectedDate; renderAll(); }
+  if (event.target.matches("#insightRange")) { renderInsights(); }
   if (event.target.matches("#book_key")) {
     const book = bookStatuses[event.target.value];
     if (!book) return;
@@ -1322,7 +1726,7 @@ document.addEventListener("submit", (event) => {
   }
   if (form.id === "skillForm") { skills.push({ date:selectedDate, skill:values.skill, value:values.value, unit:values.unit, progression:values.progression }); saveSkills(); renderAll(); toast("PR saved"); }
   if (form.id === "goalsForm") {
-    settings = { ...settings, ...numericPatch(values, ["calorieGoal","proteinGoal","weightGoal","stepsGoal","movementGoal","sleepGoal","sleepScoreGoal","screenUsefulGoal","screenEntertainmentLimit","waterGoal","readingDaysGoal","bibleChaptersGoal"]), theme:values.theme || "auto" };
+    settings = { ...settings, ...numericPatch(values, ["calorieGoal","proteinGoal","fiberGoal","waterGoal","caffeineLimit","weightGoal","stepsGoal","movementGoal","sleepGoal","sleepScoreGoal","screenUsefulGoal","screenEntertainmentLimit","readingDaysGoal","bibleChaptersGoal"]), theme:values.theme || "auto" };
     saveSettings(); renderAll(); toast("Goals saved");
   }
 });
@@ -1338,6 +1742,7 @@ document.addEventListener("visibilitychange", () => {
 });
 window.addEventListener("pagehide", pauseTransientWork);
 window.addEventListener("freeze", pauseTransientWork);
+window.addEventListener("pageshow", closeAllDetails);
 
 syncBookStatusesFromEntries();
 renderAll();
