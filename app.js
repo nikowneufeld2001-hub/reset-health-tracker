@@ -1296,7 +1296,7 @@ function skillListHTML() {
 function setActivePage(page, scroll = true) {
   activePage = page;
   document.querySelectorAll(".page").forEach((el) => el.classList.toggle("is-active", el.id === `page-${page}`));
-  document.querySelectorAll(".tab-button").forEach((button) => button.classList.toggle("is-active", button.dataset.page === page || (["bible","insights","goals","import","ai","ledger","share","data","edit"].includes(page) && button.dataset.page === "more")));
+  document.querySelectorAll(".tab-button").forEach((button) => button.classList.toggle("is-active", button.dataset.page === page || (["bible","goals","import","ai","ledger","share","data","edit"].includes(page) && button.dataset.page === "more")));
   if (scroll) window.scrollTo({ top: 0, behavior: "smooth" });
 }
 function formObject(form) { return Object.fromEntries(new FormData(form).entries()); }

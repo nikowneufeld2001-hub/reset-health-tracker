@@ -2,7 +2,7 @@
   "name": "Reset Life Dashboard",
   "short_name": "Reset",
   "description": "A private personal health, nutrition, reading, time, and habit dashboard.",
-  "start_url": "./index.html?v=clean-drilldowns-v15-20260728",
+  "start_url": "./index.html?v=insights-tab-v16-20260729",
   "scope": "./",
   "display": "standalone",
   "background_color": "#070b12",
